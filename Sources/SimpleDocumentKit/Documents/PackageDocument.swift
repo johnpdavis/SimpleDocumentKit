@@ -9,7 +9,7 @@
 import UIKit
 
 public protocol NamedPackageDocContents {
-    static var name: String { get }
+    static var packageDocContentsName: String { get }
 }
 
 public typealias PackageDocContents = Codable & Defaultable & Equatable & NamedPackageDocContents
@@ -18,8 +18,8 @@ public class PackageDocument<DATATYPE: PackageDocContents, MDATATYPE: PackageDoc
     
     // MARK: - Properties
     
-    private let dataFilename = DATATYPE.name //"data.json"
-    private let metaDataFilename = MDATATYPE.name //"metadata.json"
+    private let dataFilename = DATATYPE.packageDocContentsName //"data.json"
+    private let metaDataFilename = MDATATYPE.packageDocContentsName //"metadata.json"
     
     private var privateDocumentData: DATATYPE?
     var documentData: DATATYPE {
