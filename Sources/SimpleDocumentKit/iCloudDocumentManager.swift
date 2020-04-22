@@ -8,9 +8,8 @@
 
 import Foundation
 
-//PASS IN DOCUMENT LOCATION, AND INJECT INTO QUERY COORDINATOR?!
 protocol LocalFileSystemSource: class {
-    var rootURL: URL? { get }
+    var rootURL: URL { get }
 }
 
 public class iCloudDocumentManager {
@@ -146,7 +145,7 @@ public class iCloudDocumentManager {
     func moveiCloudToLocal() {
         coordinator.iCloudURLs.forEach { iCloudURL in
             let filename = iCloudURL.lastPathComponent
-            guard let newURL = localFileSystemSource?.rootURL?.appendingPathComponent(filename) else { return }
+            guard let newURL = localFileSystemSource?.rootURL.appendingPathComponent(filename) else { return }
             
             DispatchQueue.global(qos: .default).async {
                 var error: NSError?

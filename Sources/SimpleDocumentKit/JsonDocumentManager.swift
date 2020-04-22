@@ -11,23 +11,19 @@ import UIKit
 public class JsonDocumentManager: LocalFileSystemSource {
     public var iCloudManager = iCloudDocumentManager()
 
-    public init() {
+    public init(rootURL: URL) {
+        self.rootURL = rootURL
+        
         iCloudManager.localFileSystemSource = self
     }
     
-    public var rootURL: URL? {
-         return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
-    }
+    public let rootURL: URL
     
     /// URL for document with provided name.
     ///
     /// - Parameter name: Name of document with extension
     /// - Returns: returns URL of document, or nil, if it could not be found or created
     func urlForDocument(name: String) -> URL? {
-        guard let rootURL = rootURL else {
-            fatalError("Unable to find documents root directory. Unable to make databse URL")
-        }
-        
         if iCloudManager.iCloudOn {
             return iCloudManager.iCloudURLForDocument(filename: name)
         } else {
