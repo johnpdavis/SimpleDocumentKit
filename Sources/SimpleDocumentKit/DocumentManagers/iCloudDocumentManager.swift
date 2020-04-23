@@ -12,6 +12,7 @@ import Foundation
 public class CloudDocumentManager: BaseDocumentManager {
     
     // MARK: Properties
+    let ubiquityContainerIdentifier: String
     
     var iCloudOn: Bool { return ICloudDefaults.standard.iCloudOn }
     public var iCloudRootURL: URL?
@@ -20,7 +21,8 @@ public class CloudDocumentManager: BaseDocumentManager {
     }
     
     // MARK: Initializers
-    public init(localDocumentRoot: URL, documentExtension: String) {
+    public init(ubiquityContainerIdentifier: String, localDocumentRoot: URL, documentExtension: String) {
+        self.ubiquityContainerIdentifier = ubiquityContainerIdentifier
         let coordinator = iCloudDocumentQueryCoordinator(documentExtension: documentExtension)
         super.init(localDocumentRoot: localDocumentRoot, coordinator: coordinator)
     }
