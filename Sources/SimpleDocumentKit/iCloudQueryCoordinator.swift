@@ -8,63 +8,12 @@
 
 import Foundation
 
-protocol CloudQueryCoordinatorDelegate: class {
-    
-    /// Invoked when the URLs from the query update have been processed and stable. The iCloudURLs property of the coordinator is stable and representative of the recent query update.
-    ///
-    /// - Parameter queryCoordinator: Coordinator that will enable updates
-    func queryCoordinatorWillEnableQueryUpdates(_ queryCoordinator: iCloudQueryCoordinator)
-    
-    
-    /// Invoked to communicate which files have been added, updated, and removed in the recent query update
-    ///
-    /// - Parameters:
-    ///   - queryCoordinator: Coordinator that processed the query update
-    ///   - addedFiles: Array of URLs detected as being added to the iCloud directory
-    ///   - updatedFiles: Array of URLs detected as being still present in the iCloud directory
-    ///   - removedFiles: Array of URLs detected as being removed from the iCloud directory
-    func queryCoordinator(_ queryCoordinator: iCloudQueryCoordinator, didDetectAddedFiles addedFiles: [URL], updatedFiles:[URL], removedFiles:[URL])
-}
-
-public class iCloudQueryCoordinator {
-    // MARK: Properties
-    var currentQuery: NSMetadataQuery?
-    var iCloudURLsReady: Bool = false
-    var iCloudURLs: [URL] = []
-    
-    weak var delegate: CloudQueryCoordinatorDelegate?
-    
-    public func makeDocumentQuery() -> NSMetadataQuery {
-        let query = NSMetadataQuery()
-        query.searchScopes = [NSMetadataQueryUbiquitousDocumentsScope]
-        query.predicate = NSPredicate(format: "%K LIKE %@", NSMetadataItemFSNameKey, "*.documentkit")
-        
-        return query
+public class iCloudDocumentQueryCoordinator: DocumentQueryCoordinator {
+    init(documentExtension: String) {
+        super.init(searchScope: NSMetadataQueryUbiquitousDocumentsScope, documentExtension: documentExtension)
     }
     
-    public func startQuery() {
-        self.stopQuery()
-        
-        print("Starting to watch iCloud Dir")
-        
-        currentQuery = makeDocumentQuery()
-        NotificationCenter.default.addObserver(self, selector: #selector(processiCloudFiles(_:)), name: .NSMetadataQueryDidFinishGathering, object: currentQuery)
-        NotificationCenter.default.addObserver(self, selector: #selector(processiCloudFiles(_:)), name: .NSMetadataQueryDidUpdate, object: currentQuery)
-        
-        currentQuery?.start()
-    }
-    
-    public func stopQuery() {
-        if let currentQuery = currentQuery {
-            NotificationCenter.default.removeObserver(self, name: .NSMetadataQueryDidFinishGathering, object: currentQuery)
-            NotificationCenter.default.removeObserver(self, name: .NSMetadataQueryDidUpdate, object: currentQuery)
-            currentQuery.stop()
-            self.currentQuery = nil
-        }
-    }
-    
-    @objc
-    public func processiCloudFiles(_ notification: Notification) {
+    override public func processFiles() {
         guard let currentQuery = currentQuery else { return }
         
         currentQuery.disableUpdates()
@@ -87,22 +36,18 @@ public class iCloudQueryCoordinator {
         print(newlyDiscoveredURLs)
         
         let newURLSet = Set(newlyDiscoveredURLs)
-        let currentURLSet = Set(iCloudURLs)
+        let currentURLSet = Set(urls)
         
         let newItems = newURLSet.filter { !currentURLSet.contains($0) }
         let removedItems = currentURLSet.filter { !newURLSet.contains($0) }
         let updatedItems = currentURLSet.filter { newURLSet.contains($0) }
         
-        iCloudURLs = newlyDiscoveredURLs
-        iCloudURLsReady = true
+        urls = newlyDiscoveredURLs
+        urlsReady = true
         
-        delegate?.queryCoordinatorWillEnableQueryUpdates(self)
-        delegate?.queryCoordinator(self, didDetectAddedFiles: Array(newItems), updatedFiles: Array(updatedItems), removedFiles: Array(removedItems))
+        let result: DocumentsUpdatedResult = .success((added: Array(newItems), updated: Array(updatedItems), removed: Array(removedItems)))
+        documentsUpdatedPublisher.send(result)
         
         currentQuery.enableUpdates()
-    }
-    
-    func docNameExistsIniCloudURLs(_ name: String) -> Bool {
-        return !iCloudURLs.filter({ $0.lastPathComponent == name }).isEmpty
     }
 }

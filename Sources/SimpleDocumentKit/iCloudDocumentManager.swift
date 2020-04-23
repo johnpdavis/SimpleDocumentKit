@@ -6,35 +6,41 @@
 //  Copyright © 2019 John Davis. All rights reserved.
 //
 
+import Combine
 import Foundation
 
-protocol LocalFileSystemSource: class {
-    var rootURL: URL { get }
+public class DocumentManager {
+    let localDocumentRoot: URL
+    let coordinator: DocumentQueryCoordinator
+    
+    public var documentsUpdatedPublisher: AnyPublisher<DocumentQueryCoordinator.DocumentsUpdatedResult, Never> {
+        coordinator.documentsUpdatedPublisher.eraseToAnyPublisher()
+    }
+    
+    init(localDocumentRoot: URL, coordinator: DocumentQueryCoordinator) {
+        self.localDocumentRoot = localDocumentRoot
+        self.coordinator = coordinator
+    }
+
 }
 
-public class iCloudDocumentManager {
+
+public class iCloudDocumentManager: DocumentManager {
     
     // MARK: Properties
-    weak var localFileSystemSource: LocalFileSystemSource?
+    
     var iCloudOn: Bool { return ICloudDefaults.standard.iCloudOn }
     public var iCloudRootURL: URL?
-    let coordinator = iCloudQueryCoordinator()
     public var currentiCloudURLs: [URL] {
-        return coordinator.iCloudURLs
+        return coordinator.urls
     }
-    
-    public typealias DocumentChangeListener = ([URL], [URL], [URL]) -> Void
-    public var documentChangeListeners: [AnyHashable: DocumentChangeListener] = [:]
-    
-    var needsLocalToiCloud: Bool = false
-    var needsiCloudToLocal: Bool = false
     
     // MARK: Initializers
-    
-    public init() {
-        coordinator.delegate = self
+    init(localDocumentRoot: URL, documentExtension: String) {
+        let coordinator = iCloudDocumentQueryCoordinator(documentExtension: documentExtension)
+        super.init(localDocumentRoot: localDocumentRoot, coordinator: coordinator)
     }
-    
+
     func iCloudURLForDocument(filename: String) -> URL? {
         return iCloudRootURL?.appendingPathComponent("Documents").appendingPathComponent(filename)
     }
@@ -54,7 +60,6 @@ public class iCloudDocumentManager {
         }
     }
     
-    // TODO: Trigger a scan if the user turns on the iCloud switch when settings change, or via the alert
     public func scaniCloudOptIn(promptForOptIn:@escaping (() -> ()), completion: @escaping (() -> Void)) {
         initializeiCloudAccess(completion: { iCloudAvailable, _ in
             if !iCloudAvailable {
@@ -99,22 +104,8 @@ public class iCloudDocumentManager {
         })
     }
     
-    public func localToCloud() {
-        print("Local to cloud")
-        
-        if coordinator.iCloudURLsReady {
-            print("attempting move")
-            moveFilesToiCloud()
-        } else {
-            // We need to wait to move the files. Raise a flag for now.
-            print("Raising local to cloud flag")
-            needsLocalToiCloud = true
-        }
-    }
-    
     func moveFilesToiCloud() {
-        guard let localRootURL = localFileSystemSource?.rootURL,
-        let localURLs = try? FileManager.default.contentsOfDirectory(at: localRootURL, includingPropertiesForKeys: nil, options: []) else { return }
+        let localURLs = try? FileManager.default.contentsOfDirectory(at: localDocumentRoot, includingPropertiesForKeys: nil, options: []) else { return }
         
         localURLs.forEach { localURL in
             let filename = localURL.lastPathComponent
@@ -130,20 +121,9 @@ public class iCloudDocumentManager {
             }
         }
     }
-    
-    public func cloudToLocal() {
-        print("cloud to local")
-        
-        if coordinator.iCloudURLsReady {
-            moveiCloudToLocal()
-        } else {
-            // if we can't do it now, raise a flag for when we can
-            needsiCloudToLocal = true
-        }
-    }
-    
+
     func moveiCloudToLocal() {
-        coordinator.iCloudURLs.forEach { iCloudURL in
+        coordinator.urls.forEach { iCloudURL in
             let filename = iCloudURL.lastPathComponent
             guard let newURL = localFileSystemSource?.rootURL.appendingPathComponent(filename) else { return }
             
@@ -163,51 +143,6 @@ public class iCloudDocumentManager {
     }
     
     func iCloudFileExists(URL: URL) -> Bool {
-        return coordinator.iCloudURLs.contains(URL)
-    }
-}
-
-// MARK: - Manage iCloud file system query listeners
-extension iCloudDocumentManager {
-    public func addListener(_ listener: AnyHashable, block: @escaping DocumentChangeListener) {
-        documentChangeListeners[listener] = block
-    }
-    
-    public func removeListener(_ listener: AnyHashable) {
-        documentChangeListeners.removeValue(forKey: listener)
-    }
-    
-    public func informListeners( addedURLs: [URL], modifiedURLs: [URL], removedURLs: [URL]) {
-        documentChangeListeners.values.forEach { $0(addedURLs, modifiedURLs, removedURLs) }
-    }
-}
-
-extension iCloudDocumentManager: CloudQueryCoordinatorDelegate {
-    func queryCoordinatorWillEnableQueryUpdates(_ queryCoordinator: iCloudQueryCoordinator) {
-        // Attempt a move if needed
-        if self.needsLocalToiCloud {
-            self.needsLocalToiCloud = false
-            self.moveFilesToiCloud()
-        }
-        
-        if self.needsiCloudToLocal {
-            self.needsiCloudToLocal = false
-            self.moveiCloudToLocal()
-        }
-    }
-    
-    func queryCoordinator(_ queryCoordinator: iCloudQueryCoordinator, didDetectAddedFiles addedFiles: [URL], updatedFiles: [URL], removedFiles: [URL]) {
-        print("============= iCloud Doc received query coordinator file changes =============")
-        print("\(addedFiles.count) Added")
-        print(addedFiles)
-        print("\n")
-        print("\(updatedFiles.count) Updated")
-        print(updatedFiles)
-        print("\n")
-        print("\(removedFiles.count) removed")
-        print(removedFiles)
-        print("==============================================================================")
-        
-        informListeners(addedURLs: addedFiles, modifiedURLs: updatedFiles, removedURLs: removedFiles)
+        return coordinator.urls.contains(URL)
     }
 }
