@@ -18,7 +18,7 @@ public class DocumentQueryCoordinator {
     ///   - updated: Array of URLs detected as being still present in the observed directory
     ///   - removed: Array of URLs detected as being removed from the observed directory
     ///   - error: Error raised when querying for updates
-    typealias DocumentsUpdatedResult = Result<(added: [URL], updated: [URL], removed: [URL]), Error>
+    public typealias DocumentsUpdatedResult = Result<(added: [URL], updated: [URL], removed: [URL]), Error>
     let documentsUpdatedPublisher = PassthroughSubject<DocumentsUpdatedResult, Never>()
 
     let documentExtension: String
@@ -64,6 +64,40 @@ public class DocumentQueryCoordinator {
     }
 
     public func processFiles() {
-        assertionFailure("Override In Subclass")
+        guard let currentQuery = currentQuery else { return }
+        
+        currentQuery.disableUpdates()
+        
+        let newlyDiscoveredURLs: [URL] = currentQuery.results.compactMap { result in
+            guard let result = result as? NSMetadataItem,
+                let url = result.value(forAttribute: NSMetadataItemURLKey) as? URL else { return nil }
+            
+            
+            if let values = try? url.promisedItemResourceValues(forKeys: [URLResourceKey.isHiddenKey]),
+                let isHidden = values.isHidden,
+                !isHidden {
+                return url
+            }
+            
+            return nil
+        }
+        
+        print("Found \(newlyDiscoveredURLs.count) URLs")
+        print(newlyDiscoveredURLs)
+        
+        let newURLSet = Set(newlyDiscoveredURLs)
+        let currentURLSet = Set(urls)
+        
+        let newItems = newURLSet.filter { !currentURLSet.contains($0) }
+        let removedItems = currentURLSet.filter { !newURLSet.contains($0) }
+        let updatedItems = currentURLSet.filter { newURLSet.contains($0) }
+        
+        urls = newlyDiscoveredURLs
+        urlsReady = true
+        
+        let result: DocumentsUpdatedResult = .success((added: Array(newItems), updated: Array(updatedItems), removed: Array(removedItems)))
+        documentsUpdatedPublisher.send(result)
+        
+        currentQuery.enableUpdates()
     }
 }

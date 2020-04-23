@@ -9,7 +9,7 @@
 import Combine
 import Foundation
 
-public class iCloudDocumentManager: BaseDocumentManager {
+public class CloudDocumentManager: BaseDocumentManager {
     
     // MARK: Properties
     
@@ -20,7 +20,7 @@ public class iCloudDocumentManager: BaseDocumentManager {
     }
     
     // MARK: Initializers
-    init(localDocumentRoot: URL, documentExtension: String) {
+    public init(localDocumentRoot: URL, documentExtension: String) {
         let coordinator = iCloudDocumentQueryCoordinator(documentExtension: documentExtension)
         super.init(localDocumentRoot: localDocumentRoot, coordinator: coordinator)
     }

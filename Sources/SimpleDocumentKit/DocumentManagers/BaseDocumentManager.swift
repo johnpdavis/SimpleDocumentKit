@@ -16,7 +16,7 @@ public class BaseDocumentManager {
         coordinator.documentsUpdatedPublisher.eraseToAnyPublisher()
     }
     
-    init(localDocumentRoot: URL, coordinator: DocumentQueryCoordinator) {
+    public init(localDocumentRoot: URL, coordinator: DocumentQueryCoordinator) {
         self.localDocumentRoot = localDocumentRoot
         self.coordinator = coordinator
     }
