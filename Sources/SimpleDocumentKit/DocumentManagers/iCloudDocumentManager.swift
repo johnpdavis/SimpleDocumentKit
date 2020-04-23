@@ -109,7 +109,7 @@ public class CloudDocumentManager: BaseDocumentManager {
     func moveiCloudToLocal() {
         coordinator.urls.forEach { iCloudURL in
             let filename = iCloudURL.lastPathComponent
-            guard let newURL = localDocumentRoot nsf.appendingPathComponent(filename) else { return }
+            let newURL = localDocumentRoot.appendingPathComponent(filename)
             
             DispatchQueue.global(qos: .default).async {
                 var error: NSError?
