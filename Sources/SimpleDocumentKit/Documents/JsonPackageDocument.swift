@@ -16,7 +16,6 @@ public class JsonPackageDocument<JSONROOT: JsonDocData, MDATAROOT: JsonDocData>:
     
     // MARK: Properties
     
-    
     /// JSON Flavored variable that wraps the documentdata variable
     public var root: JSONROOT {
         get {
@@ -37,6 +36,11 @@ public class JsonPackageDocument<JSONROOT: JsonDocData, MDATAROOT: JsonDocData>:
         set {
             metaData = newValue
         }
+    }
+    
+    // Initialization
+    public override init(fileURL url: URL) {
+        super.init(fileURL: url)
     }
     
     // MARK: PackageDocument Overrides
