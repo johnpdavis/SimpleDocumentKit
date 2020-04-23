@@ -67,15 +67,15 @@ public class CloudDocumentManager: BaseDocumentManager {
                     promptForOptIn()
                 }
                 
-                // If iCloud newly switched on, move local docs to iCloud
-                if ICloudDefaults.standard.iCloudOn && !ICloudDefaults.standard.iCloudWasOn {
-                    self.localToCloud()
-                }
-                
-                // If iCloud newly switched off, move iCloud docs to Local
-                if !ICloudDefaults.standard.iCloudOn && ICloudDefaults.standard.iCloudWasOn {
-                    self.cloudToLocal()
-                }
+//                // If iCloud newly switched on, move local docs to iCloud
+//                if ICloudDefaults.standard.iCloudOn && !ICloudDefaults.standard.iCloudWasOn {
+//                    self.localToCloud()
+//                }
+//
+//                // If iCloud newly switched off, move iCloud docs to Local
+//                if !ICloudDefaults.standard.iCloudOn && ICloudDefaults.standard.iCloudWasOn {
+//                    self.cloudToLocal()
+//                }
                 
                 // Start querying iCloud for files, whether on or off
                 self.coordinator.startQuery()
@@ -89,7 +89,7 @@ public class CloudDocumentManager: BaseDocumentManager {
     }
     
     func moveFilesToiCloud() {
-        let localURLs = try? FileManager.default.contentsOfDirectory(at: localDocumentRoot, includingPropertiesForKeys: nil, options: []) else { return }
+        guard let localURLs = try? FileManager.default.contentsOfDirectory(at: localDocumentRoot, includingPropertiesForKeys: nil, options: []) else { return }
         
         localURLs.forEach { localURL in
             let filename = localURL.lastPathComponent
@@ -109,7 +109,7 @@ public class CloudDocumentManager: BaseDocumentManager {
     func moveiCloudToLocal() {
         coordinator.urls.forEach { iCloudURL in
             let filename = iCloudURL.lastPathComponent
-            guard let newURL = localFileSystemSource?.rootURL.appendingPathComponent(filename) else { return }
+            guard let newURL = localDocumentRoot nsf.appendingPathComponent(filename) else { return }
             
             DispatchQueue.global(qos: .default).async {
                 var error: NSError?
