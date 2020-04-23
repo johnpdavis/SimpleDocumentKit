@@ -20,4 +20,8 @@ public class BaseDocumentManager {
         self.localDocumentRoot = localDocumentRoot
         self.coordinator = coordinator
     }
+    
+    public func startQueryingDocuments() {
+        self.coordinator.startQuery()
+    }
 }
