@@ -9,23 +9,7 @@
 import Combine
 import Foundation
 
-public class DocumentManager {
-    let localDocumentRoot: URL
-    let coordinator: DocumentQueryCoordinator
-    
-    public var documentsUpdatedPublisher: AnyPublisher<DocumentQueryCoordinator.DocumentsUpdatedResult, Never> {
-        coordinator.documentsUpdatedPublisher.eraseToAnyPublisher()
-    }
-    
-    init(localDocumentRoot: URL, coordinator: DocumentQueryCoordinator) {
-        self.localDocumentRoot = localDocumentRoot
-        self.coordinator = coordinator
-    }
-
-}
-
-
-public class iCloudDocumentManager: DocumentManager {
+public class iCloudDocumentManager: BaseDocumentManager {
     
     // MARK: Properties
     
