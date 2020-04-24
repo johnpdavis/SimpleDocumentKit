@@ -27,7 +27,7 @@ public class CloudDocumentManager: BaseDocumentManager {
         super.init(localDocumentRoot: localDocumentRoot, coordinator: coordinator)
     }
 
-    func iCloudURLForDocument(filename: String) -> URL? {
+    public func iCloudURLForDocument(filename: String) -> URL? {
         return iCloudRootURL?.appendingPathComponent("Documents").appendingPathComponent(filename)
     }
     

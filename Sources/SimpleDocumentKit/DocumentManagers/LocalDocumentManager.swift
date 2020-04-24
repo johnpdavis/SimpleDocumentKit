@@ -12,4 +12,8 @@ public class LocalDocumentManager: BaseDocumentManager {
         let coordinator = DocumentQueryCoordinator(searchScope: localDocumentRoot as NSURL, documentExtension: documentExtension)
         super.init(localDocumentRoot: localDocumentRoot, coordinator: coordinator)
     }
+    
+    public func localURLForDocument(filename: String) -> URL? {
+        return localDocumentRoot.appendingPathComponent(filename)
+    }
 }
