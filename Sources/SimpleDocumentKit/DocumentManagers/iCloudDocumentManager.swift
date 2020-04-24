@@ -29,7 +29,7 @@ public class CloudDocumentManager: BaseDocumentManager {
 
     public func iCloudURLForDocument(filename: String) -> URL? {
         guard let rootURL = iCloudRootURL else { return nil }
-        return iCloudURLForDocument(filename: filename, at: rootURL)
+        return CloudDocumentManager.iCloudURLForDocument(filename: filename, at: rootURL)
     }
     
     public static func iCloudURLForDocument(filename: String, at rootURL: URL) -> URL {
