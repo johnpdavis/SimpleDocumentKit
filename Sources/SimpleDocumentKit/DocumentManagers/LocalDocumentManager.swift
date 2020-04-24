@@ -13,7 +13,8 @@ public class LocalDocumentManager: BaseDocumentManager {
         super.init(localDocumentRoot: localDocumentRoot, coordinator: coordinator)
     }
     
-    public func localURLForDocument(filename: String) -> URL? {
+    public func localURLForDocument(filename: String) -> URL {
         return localDocumentRoot.appendingPathComponent(filename)
     }
 }
+F

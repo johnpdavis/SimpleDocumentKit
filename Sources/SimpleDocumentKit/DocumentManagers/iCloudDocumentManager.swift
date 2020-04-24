@@ -32,7 +32,7 @@ public class CloudDocumentManager: BaseDocumentManager {
         return iCloudURLForDocument(filename: filename, at: rootURL)
     }
     
-    public static func iCloudURLForDocument(filename: String, at rootURL: URL) -> URL? {
+    public static func iCloudURLForDocument(filename: String, at rootURL: URL) -> URL {
         return rootURL.appendingPathComponent("Documents").appendingPathComponent(filename)
     }
     
