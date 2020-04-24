@@ -28,7 +28,12 @@ public class CloudDocumentManager: BaseDocumentManager {
     }
 
     public func iCloudURLForDocument(filename: String) -> URL? {
-        return iCloudRootURL?.appendingPathComponent("Documents").appendingPathComponent(filename)
+        guard let rootURL = iCloudRootURL else { return nil }
+        return iCloudURLForDocument(filename: filename, at: rootURL)
+    }
+    
+    public static func iCloudURLForDocument(filename: String, at rootURL: URL) -> URL? {
+        return rootURL.appendingPathComponent("Documents").appendingPathComponent(filename)
     }
     
     public func initializeiCloudAccess(completion:@escaping ((Bool, URL?) -> Void)) {
