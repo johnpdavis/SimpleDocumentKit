@@ -32,7 +32,7 @@ public class DocumentQueryCoordinator {
     public func makeDocumentQuery(searchScope: Any, documentExtension: String) -> NSMetadataQuery {
         let query = NSMetadataQuery()
         query.searchScopes = [searchScope]
-        query.predicate = NSPredicate(format: "%K LIKE %@", NSMetadataItemFSNameKey, ".\(documentExtension)")
+        query.predicate = NSPredicate(format: "%K LIKE %@", NSMetadataItemFSNameKey, "\(documentExtension)")
         // NSPredicate(format: "%K.URLByDeletingLastPathComponent.path == %@", argumentArray: [NSMetadataItemURLKey, iCloudDocsURL.path])
         
         return query
