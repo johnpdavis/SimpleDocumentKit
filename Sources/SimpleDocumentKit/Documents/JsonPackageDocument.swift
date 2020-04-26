@@ -17,25 +17,21 @@ public class JsonPackageDocument<JSONROOT: JsonDocData, MDATAROOT: JsonDocData>:
     // MARK: Properties
     
     /// JSON Flavored variable that wraps the documentdata variable
-    public var root: JSONROOT {
-        get {
-            return documentData
-        }
-        
-        set {
-            documentData = newValue
-        }
+    public func getRoot() throws -> JSONROOT {
+        return try getDocumentData()
+    }
+    
+    public func setRoot(_ newValue: JSONROOT) {
+        setDocumentData(newValue)
     }
     
     /// JSON Flavored variable that wraps the metaData variable
-    public var metaDataRoot: MDATAROOT {
-        get {
-            return metaData
-        }
-        
-        set {
-            metaData = newValue
-        }
+    public func getMetaDataRoot() throws -> MDATAROOT {
+        return try getMetaData()
+    }
+    
+    public func setMetaDataRoot(_ newValue: MDATAROOT) {
+        setMetaData(newValue)
     }
     
     // Initialization
@@ -78,8 +74,10 @@ extension JsonPackageDocument {
         if documentState.contains(.normal) {
             let encoder = JSONEncoder()
             encoder.outputFormatting = .prettyPrinted
-            if let metaData = try? encoder.encode(metaDataRoot),
-                let data = try? encoder.encode(root){
+            if let metaDataObject = try? getMetaDataRoot(),
+                let rootDataObject = try? getRoot(),
+                let metaData = try? encoder.encode(metaDataObject),
+                let data = try? encoder.encode(rootDataObject){
                 let dataString = String(data: data, encoding: .utf8) ?? "nil"
                 let mdataString = String(data: metaData, encoding: .utf8) ?? "nil"
                 return "\(mdataString)\n========\n\(dataString)"

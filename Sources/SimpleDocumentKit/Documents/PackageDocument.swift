@@ -18,40 +18,53 @@ public class PackageDocument<DATATYPE: PackageDocContents, MDATATYPE: PackageDoc
     
     // MARK: - Properties
     
-    private let dataFilename = DATATYPE.packageDocContentsName //"data.json"
-    private let metaDataFilename = MDATATYPE.packageDocContentsName //"metadata.json"
+    private let dataFilename = DATATYPE.packageDocContentsName
+    private let metaDataFilename = MDATATYPE.packageDocContentsName
     
     private var privateDocumentData: DATATYPE?
-    var documentData: DATATYPE {
-        get {
-            guard let privateDocumentData = privateDocumentData else {
-                let newDocumentData = decodePackageDataFrom(fileWrapper, key:dataFilename) ?? DATATYPE.default()
-                self.privateDocumentData = newDocumentData
-                return newDocumentData
-            }
-            
-            return privateDocumentData
+    public func getDocumentData() throws -> DATATYPE  {
+        guard let fileWrapper = fileWrapper else {
+            throw SmartDocumentError.documentNotLoaded
         }
-        set {
-            privateDocumentData = newValue
-            updateChangeCount(.done)
+        
+        if let data = privateDocumentData {
+            return data
         }
+        
+        guard let newDocumentData: DATATYPE = decodePackageDataFrom(fileWrapper, key:dataFilename) else {
+            throw SmartDocumentError.unableToParseData
+        }
+        
+        privateDocumentData = newDocumentData
+        return newDocumentData
     }
+    
+    public func setDocumentData(_ newValue: DATATYPE) {
+        privateDocumentData = newValue
+        updateChangeCount(.done)
+    }
+
     private var privateMetaData: MDATATYPE?
-    var metaData: MDATATYPE {
-        get {
-            guard let privateMetaData = privateMetaData else {
-                let newMetaData = decodePackageDataFrom(fileWrapper, key:metaDataFilename) ?? MDATATYPE.default()
-                self.privateMetaData = newMetaData
-                return newMetaData
-            }
-            
-            return privateMetaData
+    public func getMetaData() throws -> MDATATYPE  {
+        guard let fileWrapper = fileWrapper else {
+            throw SmartDocumentError.documentNotLoaded
         }
-        set {
-            privateMetaData = newValue
-            updateChangeCount(.done)
+        
+        if let data = privateMetaData {
+            return data
         }
+        
+        guard let loadedMetaData: MDATATYPE = decodePackageDataFrom(fileWrapper, key:metaDataFilename) else {
+            throw SmartDocumentError.unableToParseData
+        }
+        
+        privateMetaData = loadedMetaData
+        return loadedMetaData
+    }
+    
+    public func setMetaData(_ newValue: MDATATYPE) {
+        privateMetaData = newValue
+        updateChangeCount(.done)
     }
     
     var fileWrapper: FileWrapper?
@@ -89,8 +102,8 @@ public class PackageDocument<DATATYPE: PackageDocContents, MDATATYPE: PackageDoc
         print("Contents For Type: \(typeName)")
         
         var wrappers:[String: FileWrapper] = [:]
-        wrappers[dataFilename] = FileWrapper(regularFileWithContents: try encodePackageData(documentData))
-        wrappers[metaDataFilename] = FileWrapper(regularFileWithContents: try encodePackageMetaData(metaData))
+        wrappers[dataFilename] = FileWrapper(regularFileWithContents: try encodePackageData(try getDocumentData()))
+        wrappers[metaDataFilename] = FileWrapper(regularFileWithContents: try encodePackageMetaData(try getMetaData()))
         
         return FileWrapper.init(directoryWithFileWrappers: wrappers)
     }

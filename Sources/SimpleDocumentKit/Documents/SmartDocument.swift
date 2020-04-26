@@ -15,6 +15,7 @@ import UIKit
 /// - unableToEncodeData: Thrown if the document can't encode it's new data
 /// - unableToRemove: Thrown if the document fails to remove itself from the file system
 public enum SmartDocumentError: Error {
+    case documentNotLoaded
     case unableToParseData
     case unableToEncodeData
     case unableToSave
