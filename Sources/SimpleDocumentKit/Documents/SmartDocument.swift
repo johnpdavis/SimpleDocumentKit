@@ -36,7 +36,7 @@ public protocol SmartDocumentDelegate: class {
 
 
 /// Smart document registers for its parents document change events, and delegates these events via a `SmartDocumentDelegate`.
-public class SmartDocument: UIDocument {
+open class SmartDocument: UIDocument {
     
     /// Delegate to receive document state change callbacks
     public weak var delegate: SmartDocumentDelegate?
