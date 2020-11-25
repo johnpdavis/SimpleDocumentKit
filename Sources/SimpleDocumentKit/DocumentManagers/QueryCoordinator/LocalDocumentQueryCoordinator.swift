@@ -30,6 +30,7 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
     
     public func startQuery() {
         do {
+            print("Starting to watch: \(searchScope)")
             try processFiles()
         } catch {
             assertionFailure("Caught error while processing directory:\(error)")
