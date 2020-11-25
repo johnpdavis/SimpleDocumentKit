@@ -23,7 +23,7 @@ public class CloudDocumentManager: BaseDocumentManager {
     // MARK: Initializers
     public init(ubiquityContainerIdentifier: String, localDocumentRoot: URL, documentExtension: String) {
         self.ubiquityContainerIdentifier = ubiquityContainerIdentifier
-        let coordinator = iCloudDocumentQueryCoordinator(documentExtension: documentExtension)
+        let coordinator = iCloudDocumentQueryCoordinator(searchScope: NSMetadataQueryUbiquitousDocumentsScope, documentExtension: documentExtension)
         super.init(localDocumentRoot: localDocumentRoot, coordinator: coordinator)
     }
 

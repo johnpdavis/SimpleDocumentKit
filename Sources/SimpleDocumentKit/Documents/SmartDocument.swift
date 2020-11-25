@@ -7,7 +7,9 @@
 // Includes functionality from Apple's DocumentBrowser document sample application.
 //
 
+#if !os(macOS)
 import UIKit
+#endif
 
 /// Error that can be thrown by a SmartDocument Object
 ///

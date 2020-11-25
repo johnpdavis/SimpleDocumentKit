@@ -7,7 +7,9 @@
 //
 
 import Foundation
+#if !os(macOS)
 import UIKit
+#endif
 
 extension NSFileVersion {
     /// Choose a version of a UIDocument and discard the others.

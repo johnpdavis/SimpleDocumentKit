@@ -8,19 +8,19 @@
 import Combine
 import Foundation
 
-public class DocumentQueryCoordinator {
+public class iCloudDocumentQueryCoordinator: DocumentQueryCoordinator {
+    
+    
     // MARK: Properties
     var currentQuery: NSMetadataQuery?
     var urlsReady: Bool = false
-    var urls: [URL] = []
-
-    ///   - added: Array of URLs detected as being added to the observed directory
-    ///   - updated: Array of URLs detected as being still present in the observed directory
-    ///   - removed: Array of URLs detected as being removed from the observed directory
-    ///   - error: Error raised when querying for updates
-    public typealias DocumentsUpdatedResult = Result<(added: [URL], updated: [URL], removed: [URL]), Error>
-    let documentsUpdatedPublisher = PassthroughSubject<DocumentsUpdatedResult, Never>()
-
+    public var urls: [URL] = []
+    
+    let documentsUpdatedSubject = PassthroughSubject<DocumentsUpdatedResult, Never>()
+    public var documentsUpdatedPublisher: AnyPublisher<DocumentsUpdatedResult, Never> {
+        return documentsUpdatedSubject.eraseToAnyPublisher()
+    }
+    
     let documentExtension: String
     let searchScope: Any
     
@@ -29,7 +29,7 @@ public class DocumentQueryCoordinator {
         self.searchScope = searchScope
     }
     
-    public func makeDocumentQuery(searchScope: Any, documentExtension: String) -> NSMetadataQuery {
+    func makeDocumentQuery(searchScope: Any, documentExtension: String) -> NSMetadataQuery {
         let query = NSMetadataQuery()
         query.searchScopes = [searchScope]
         query.predicate = NSPredicate(format: "%K LIKE %@", NSMetadataItemFSNameKey, "*\(documentExtension)")
@@ -97,7 +97,7 @@ public class DocumentQueryCoordinator {
         urlsReady = true
         
         let result: DocumentsUpdatedResult = .success((added: Array(newItems), updated: Array(updatedItems), removed: Array(removedItems)))
-        documentsUpdatedPublisher.send(result)
+        documentsUpdatedSubject.send(result)
         
         currentQuery.enableUpdates()
     }

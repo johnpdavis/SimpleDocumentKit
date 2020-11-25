@@ -8,8 +8,9 @@
 import Foundation
 
 public class LocalDocumentManager: BaseDocumentManager {
+    
     public init(localDocumentRoot: URL, documentExtension: String) {
-        let coordinator = DocumentQueryCoordinator(searchScope: localDocumentRoot as NSURL, documentExtension: documentExtension)
+        let coordinator = LocalDocumentQueryCoordinator(searchScope: localDocumentRoot, documentExtension: documentExtension)
         super.init(localDocumentRoot: localDocumentRoot, coordinator: coordinator)
     }
     

@@ -6,7 +6,9 @@
 //  Copyright © 2019 John Davis. All rights reserved.
 //
 
+#if !os(macOS)
 import UIKit
+#endif
 
 public protocol NamedPackageDocContents {
     static var packageDocContentsName: String { get }
