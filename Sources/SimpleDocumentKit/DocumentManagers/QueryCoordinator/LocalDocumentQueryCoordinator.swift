@@ -48,7 +48,7 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
         
         let newlyDiscoveredURLs = try FileManager.default.contentsOfDirectory(at: searchScope, includingPropertiesForKeys: [.nameKey],
                                                                               options: [.skipsPackageDescendants, .skipsHiddenFiles])
-            .filter({ $0.pathExtension == documentExtension.trimmingCharacters(in: ".") })
+            .filter({ $0.pathExtension == documentExtension.trimmingCharacters(in: ["."]) })
         
         print("Found \(newlyDiscoveredURLs.count) URLs")
         print(newlyDiscoveredURLs)
