@@ -58,7 +58,7 @@ open class DirectoryDispatchObserver {
         
         monitoredSource?.setEventHandler(handler: eventHandler)
         monitoredSource?.setCancelHandler(handler: cancelHandler)
-        monitoredSource? .resume()
+        monitoredSource?.resume()
         
         return true
     }

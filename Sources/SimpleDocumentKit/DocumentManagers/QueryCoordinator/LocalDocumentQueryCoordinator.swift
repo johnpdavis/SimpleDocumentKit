@@ -72,10 +72,12 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
 
 extension LocalDocumentQueryCoordinator: DirectoryDispatchObserverDelegate {
     func directoryDispatchObserverDetectedChange(_ observer: DirectoryDispatchObserver) {
-        do {
-            try processFiles()
-        } catch {
-            assertionFailure("Caught error while processing directory:\(error)")
-        }
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.2, execute: { [weak self] in
+            do {
+                try self?.processFiles()
+            } catch {
+                assertionFailure("Caught error while processing directory:\(error)")
+            }
+        })
     }
 }

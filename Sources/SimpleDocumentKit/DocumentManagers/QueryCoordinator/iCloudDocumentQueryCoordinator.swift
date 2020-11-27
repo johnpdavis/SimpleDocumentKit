@@ -61,7 +61,9 @@ public class iCloudDocumentQueryCoordinator: DocumentQueryCoordinator {
     
     @objc
     private func onMetaDataQuery(_ notification: Notification) {
-        processFiles()
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.2, execute: { [weak self] in
+            self?.processFiles()
+        })
     }
 
     public func processFiles() {
