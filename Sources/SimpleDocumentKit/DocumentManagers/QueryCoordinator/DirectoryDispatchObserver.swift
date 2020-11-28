@@ -51,9 +51,11 @@ open class DirectoryDispatchObserver {
         }
         
         let cancelHandler: () -> Void = {
-            close(self.monitoredFileDescriptor)
-            self.monitoredFileDescriptor = -1
-            self.monitoredSource = nil
+            monitoredDirectoryQueue.async {
+                close(self.monitoredFileDescriptor)
+                self.monitoredFileDescriptor = -1
+                self.monitoredSource = nil
+            }
         }
         
         monitoredSource?.setEventHandler(handler: eventHandler)
