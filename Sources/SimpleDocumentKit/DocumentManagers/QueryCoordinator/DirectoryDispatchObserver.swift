@@ -26,14 +26,14 @@ open class DirectoryDispatchObserver {
     }
     
     func startWatching() {
-        self.monitoredDirectoryQueue.async {
-            _ = subscribeToEvents()
+        self.monitoredDirectoryQueue.async { [weak self] in
+            _ = self?.subscribeToEvents()
         }
     }
     
     func stopWatching() {
         self.monitoredDirectoryQueue.async {
-            monitoredSource?.cancel()
+            self.monitoredSource?.cancel()
         }
     }
 
