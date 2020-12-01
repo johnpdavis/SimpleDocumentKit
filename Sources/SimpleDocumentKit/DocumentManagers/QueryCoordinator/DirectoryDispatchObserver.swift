@@ -14,6 +14,7 @@ protocol DirectoryDispatchObserverDelegate: class {
 
 open class DirectoryDispatchObserver {
     var url: URL
+    private var isWatching: Bool = false
     
     weak var delegate: DirectoryDispatchObserverDelegate?
     
@@ -27,13 +28,17 @@ open class DirectoryDispatchObserver {
     
     func startWatching() {
         self.monitoredDirectoryQueue.async { [weak self] in
-            _ = self?.subscribeToEvents()
+            guard let self = self, !self.isWatching else { return }
+            
+            _ = self.subscribeToEvents()
+            self.isWatching = true
         }
     }
     
     func stopWatching() {
         self.monitoredDirectoryQueue.async {
             self.monitoredSource?.cancel()
+            self.isWatching = false
         }
     }
 
