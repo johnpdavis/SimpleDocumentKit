@@ -50,14 +50,10 @@ open class DirectoryDispatchObserver {
             self.delegate?.directoryDispatchObserverDetectedChange(self)
         }
         
-        let cancelHandler: () -> Void = { [weak self] in
-            guard let self = self else { return }
-            
-            self.monitoredDirectoryQueue.async {
-                close(self.monitoredFileDescriptor)
-                self.monitoredFileDescriptor = -1
-                self.monitoredSource = nil
-            }
+        let cancelHandler: () -> Void = {
+            close(self.monitoredFileDescriptor)
+            self.monitoredFileDescriptor = -1
+            self.monitoredSource = nil
         }
         
         monitoredSource?.setEventHandler(handler: eventHandler)
