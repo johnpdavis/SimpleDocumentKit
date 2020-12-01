@@ -26,11 +26,15 @@ open class DirectoryDispatchObserver {
     }
     
     func startWatching() {
-        _ = subscribeToEvents()
+        self.monitoredDirectoryQueue.async {
+            _ = subscribeToEvents()
+        }
     }
     
     func stopWatching() {
-        monitoredSource?.cancel()
+        self.monitoredDirectoryQueue.async {
+            monitoredSource?.cancel()
+        }
     }
 
     private func subscribeToEvents() -> Bool {
@@ -53,11 +57,9 @@ open class DirectoryDispatchObserver {
         let cancelHandler: () -> Void = { [weak self] in
             guard let self = self else { return }
             
-            self.monitoredDirectoryQueue.async {
-                close(self.monitoredFileDescriptor)
-                self.monitoredFileDescriptor = -1
-                self.monitoredSource = nil
-            }
+            close(self.monitoredFileDescriptor)
+            self.monitoredFileDescriptor = -1
+            self.monitoredSource = nil
         }
         
         monitoredSource?.setEventHandler(handler: eventHandler)
