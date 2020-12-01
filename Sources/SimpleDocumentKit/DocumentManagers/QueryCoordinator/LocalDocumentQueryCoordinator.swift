@@ -34,7 +34,15 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
             try processFiles()
         } catch {
             assertionFailure("Caught error while processing directory:\(error)")
+            makeObserverAndStartQuery()
         }
+    }
+    
+    private func makeObserverAndStartQuery() {
+        self.dispatchObserver.stopWatching()
+        
+        self.dispatchObserver = DirectoryDispatchObserver(url: searchScope)
+        self.dispatchObserver.delegate = self
         
         dispatchObserver.startWatching()
     }
@@ -66,7 +74,7 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
         let result: DocumentsUpdatedResult = .success((added: Array(newItems), updated: Array(updatedItems), removed: Array(removedItems)))
         documentsUpdatedSubject.send(result)
         
-        dispatchObserver.startWatching()
+        makeObserverAndStartQuery()
     }
 }
 
