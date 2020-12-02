@@ -76,8 +76,6 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
         
         let result: DocumentsUpdatedResult = .success((added: Array(newItems), updated: Array(updatedItems), removed: Array(removedItems)))
         documentsUpdatedSubject.send(result)
-        
-        startQuery()
     }
 }
 
@@ -87,6 +85,7 @@ extension LocalDocumentQueryCoordinator: DirectoryDispatchObserverDelegate {
             do {
                 self?.stopQuery()
                 try self?.processFiles()
+                self?.startQuery()
             } catch {
                 assertionFailure("Caught error while processing directory:\(error)")
             }
