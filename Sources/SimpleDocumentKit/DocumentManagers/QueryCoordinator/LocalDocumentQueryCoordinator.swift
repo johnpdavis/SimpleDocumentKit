@@ -39,7 +39,7 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
     }
     
     private func makeObserverAndStartQuery() {
-        DispatchQueue.main.sync {
+        dispatchObserver.monitoredDirectoryQueue.async {
             self.dispatchObserver.stopWatching()
             
             self.dispatchObserver = DirectoryDispatchObserver(url: searchScope)
@@ -50,7 +50,7 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
     }
     
     public func stopQuery() {
-        DispatchQueue.main.sync {
+        dispatchObserver.monitoredDirectoryQueue.async {
             dispatchObserver.stopWatching()
         }
     }
@@ -81,11 +81,11 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
 
 extension LocalDocumentQueryCoordinator: DirectoryDispatchObserverDelegate {
     func directoryDispatchObserverDetectedChange(_ observer: DirectoryDispatchObserver) {
-        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.2, execute: { [weak self] in
+        dispatchObserver.monitoredDirectoryQueue.asyncAfter(deadline: .now() + 0.2, execute: { [weak self] in
             do {
                 self?.stopQuery()
                 try self?.processFiles()
-                self?.startQuery()
+                makeObserverAndStartQuery()
             } catch {
                 assertionFailure("Caught error while processing directory:\(error)")
             }
