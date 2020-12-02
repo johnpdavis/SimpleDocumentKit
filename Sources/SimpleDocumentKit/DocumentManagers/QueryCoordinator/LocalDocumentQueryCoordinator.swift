@@ -32,6 +32,7 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
         do {
             print("Starting to watch: \(searchScope)")
             try processFiles()
+            self.dispatchObserver.startWatching()
         } catch {
             assertionFailure("Caught error while processing directory:\(error)")
             makeObserverAndStartQuery()
