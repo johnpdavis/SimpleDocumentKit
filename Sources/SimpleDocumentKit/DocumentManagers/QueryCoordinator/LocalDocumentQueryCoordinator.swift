@@ -56,8 +56,6 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
     }
     
     public func processFiles() throws {
-        stopQuery()
-        
         let newlyDiscoveredURLs = try FileManager.default.contentsOfDirectory(at: searchScope, includingPropertiesForKeys: [.nameKey],
                                                                               options: [.skipsPackageDescendants,
                                                                                         .skipsHiddenFiles])
@@ -87,6 +85,7 @@ extension LocalDocumentQueryCoordinator: DirectoryDispatchObserverDelegate {
     func directoryDispatchObserverDetectedChange(_ observer: DirectoryDispatchObserver) {
         DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.2, execute: { [weak self] in
             do {
+                self?.stopQuery()
                 try self?.processFiles()
             } catch {
                 assertionFailure("Caught error while processing directory:\(error)")
