@@ -39,23 +39,28 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
     }
     
     private func makeObserverAndStartQuery() {
-        self.dispatchObserver.stopWatching()
-        
-        self.dispatchObserver = DirectoryDispatchObserver(url: searchScope)
-        self.dispatchObserver.delegate = self
-        
-        dispatchObserver.startWatching()
+        DispatchQueue.main.sync {
+            self.dispatchObserver.stopWatching()
+            
+            self.dispatchObserver = DirectoryDispatchObserver(url: searchScope)
+            self.dispatchObserver.delegate = self
+            
+            dispatchObserver.startWatching()
+        }
     }
     
     public func stopQuery() {
-        dispatchObserver.stopWatching()
+        DispatchQueue.main.sync {
+            dispatchObserver.stopWatching()
+        }
     }
     
     public func processFiles() throws {
-        dispatchObserver.stopWatching()
+        stopQuery()
         
         let newlyDiscoveredURLs = try FileManager.default.contentsOfDirectory(at: searchScope, includingPropertiesForKeys: [.nameKey],
-                                                                              options: [.skipsPackageDescendants, .skipsHiddenFiles])
+                                                                              options: [.skipsPackageDescendants,
+                                                                                        .skipsHiddenFiles])
             .filter({ $0.pathExtension == documentExtension.trimmingCharacters(in: ["."]) })
         
         print("Found \(newlyDiscoveredURLs.count) URLs")
@@ -74,7 +79,7 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
         let result: DocumentsUpdatedResult = .success((added: Array(newItems), updated: Array(updatedItems), removed: Array(removedItems)))
         documentsUpdatedSubject.send(result)
         
-        makeObserverAndStartQuery()
+        startQuery()
     }
 }
 
