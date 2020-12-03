@@ -16,7 +16,8 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
     }
     
     var dispatchObserver: DirectoryDispatchObserver
-
+    var dispatchObserverCancelable: AnyCancellable?
+    
     let documentExtension: String
     let searchScope: URL
     
@@ -25,35 +26,39 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
         self.searchScope = searchScope
         
         self.dispatchObserver = DirectoryDispatchObserver(url: searchScope)
-        self.dispatchObserver.delegate = self
+        self.dispatchObserver.startWatching()
     }
     
     public func startQuery() {
         do {
             print("Starting to watch: \(searchScope)")
             try processFiles()
-            self.dispatchObserver.startWatching()
+            startSubscriberPipeline()
         } catch {
             assertionFailure("Caught error while processing directory:\(error)")
-            makeObserverAndStartQuery()
+            startSubscriberPipeline()
         }
     }
     
-    private func makeObserverAndStartQuery() {
-        dispatchObserver.monitoredDirectoryQueue.async {
-            self.dispatchObserver.stopWatching()
-            
-            self.dispatchObserver = DirectoryDispatchObserver(url: self.searchScope)
-            self.dispatchObserver.delegate = self
-            
-            self.dispatchObserver.startWatching()
-        }
+    func startSubscriberPipeline() {
+        dispatchObserverCancelable = dispatchObserver.changeObservedSubject
+            .eraseToAnyPublisher()
+            .debounce(for: 0.2, scheduler: DispatchQueue.main)
+            .sink(receiveValue: { [weak self] _ in
+                do {
+                    self?.stopQuery()
+                    try self?.processFiles()
+                    self?.startSubscriberPipeline()
+                } catch {
+                    assertionFailure("Caught error while processing directory:\(error)")
+                }
+            })
     }
     
     public func stopQuery() {
-        dispatchObserver.monitoredDirectoryQueue.async {
-            self.dispatchObserver.stopWatching()
-        }
+        // cancel subscriber
+        dispatchObserverCancelable?.cancel()
+        dispatchObserverCancelable = nil
     }
     
     public func processFiles() throws {
@@ -77,19 +82,5 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
         
         let result: DocumentsUpdatedResult = .success((added: Array(newItems), updated: Array(updatedItems), removed: Array(removedItems)))
         documentsUpdatedSubject.send(result)
-    }
-}
-
-extension LocalDocumentQueryCoordinator: DirectoryDispatchObserverDelegate {
-    func directoryDispatchObserverDetectedChange(_ observer: DirectoryDispatchObserver) {
-        dispatchObserver.monitoredDirectoryQueue.asyncAfter(deadline: .now() + 0.2, execute: { [weak self] in
-            do {
-                self?.stopQuery()
-                try self?.processFiles()
-                self?.makeObserverAndStartQuery()
-            } catch {
-                assertionFailure("Caught error while processing directory:\(error)")
-            }
-        })
     }
 }

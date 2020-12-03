@@ -6,20 +6,17 @@
 //  Copyright © 2020 John Davis. All rights reserved.
 //
 
+import Combine
 import Foundation
-
-protocol DirectoryDispatchObserverDelegate: class {
-    func directoryDispatchObserverDetectedChange(_ observer: DirectoryDispatchObserver)
-}
 
 open class DirectoryDispatchObserver {
     var url: URL
     
-    weak var delegate: DirectoryDispatchObserverDelegate?
-    
     var monitoredFileDescriptor: CInt = -1
     let monitoredDirectoryQueue = DispatchQueue(label: "com.johndavis.simpledocumentkit.Directorywatcher", attributes: DispatchQueue.Attributes.concurrent)
     var monitoredSource: DispatchSourceFileSystemObject?
+    
+    var changeObservedSubject = PassthroughSubject<Bool, Never>()
     
     init(url: URL) {
         self.url = url
@@ -47,7 +44,7 @@ open class DirectoryDispatchObserver {
         
         let eventHandler: () -> Void = {
             print("Something happened at the path provided")
-            self.delegate?.directoryDispatchObserverDetectedChange(self)
+            self.changeObservedSubject.send(true)
         }
         
         let cancelHandler: () -> Void = {
