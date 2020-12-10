@@ -21,6 +21,7 @@ public enum SmartDocumentError: Error {
     case unableToParseData
     case unableToEncodeData
     case unableToSave
+    case unableToClose
 }
 
 
@@ -88,34 +89,41 @@ open class SmartDocument: UIDocument {
         }
     }
     
+    /// Convenience method to close a document.
+    public func safeClose(completion: ((Error?) -> Void)? = nil) {
+        if !self.documentState.contains(.closed) {
+            self.close { closeSuccess in
+                if closeSuccess {
+                    completion?(nil)
+                }
+                else {
+                    completion?(SmartDocumentError.unableToClose)
+                }
+            }
+        } else {
+            completion?(nil)
+        }
+    }
+    
     /// Convenience method to force an autosave and close a document.
     ///
     /// This method will autosave the document and close it if it's open afterward
     /// - Parameter completionHandler: Completion closure to be invoked upon the autosave and close completion
-    public func autoSaveAndClose(completionHandler: ((Bool) -> Void)? = nil) {
+    public func autoSaveAndClose(completion: ((Error?) -> Void)? = nil) {
         autosave { autosaveSuccess in
             if autosaveSuccess {
-                if !self.documentState.contains(.closed) {
-                    self.close { closeSuccess in
-                        completionHandler?(closeSuccess)
-                    }
-                } else {
-                    completionHandler?(autosaveSuccess)
-                }
+                self.safeClose(completion: completion)
             } else {
-                completionHandler?(false)
+                completion?(SmartDocumentError.unableToSave)
             }
         }
     }
     
     /// Upon being informed that our file will be deleted by a file coordinator, we need to force an autosave so the autosave engine doesnt re-write the file after its been removed.
     public override func accommodatePresentedItemDeletion(completionHandler: @escaping (Error?) -> Void) {
-        self.autoSaveAndClose(completionHandler: { [weak self] success in
-            if !success {
-                completionHandler(SmartDocumentError.unableToSave)
-            } else {
-                completionHandler(nil)
-            }
+        self.autoSaveAndClose(completion: { [weak self] error in
+            completionHandler(error)
+            
             self.flatMap{ $0.delegate?.smartDocumentDeletedOnOtherDevice($0)}
         })
     }
