@@ -90,42 +90,37 @@ open class SmartDocument: UIDocument {
     }
     
     /// Convenience method to close a document.
-    public func safeClose(completion: ((Error?) -> Void)? = nil) {
-        if !self.documentState.contains(.closed) {
-            self.close { closeSuccess in
-                if closeSuccess {
-                    completion?(nil)
-                }
-                else {
-                    completion?(SmartDocumentError.unableToClose)
-                }
-            }
-        } else {
-            completion?(nil)
+    public func safeClose() async throws {
+        guard !documentState.contains(.closed) else {
+            return
+        }
+        
+        let closed = await self.close()
+        
+        if !closed {
+            throw SmartDocumentError.unableToClose
         }
     }
     
     /// Convenience method to force an autosave and close a document.
     ///
     /// This method will autosave the document and close it if it's open afterward
-    /// - Parameter completionHandler: Completion closure to be invoked upon the autosave and close completion
-    public func autoSaveAndClose(completion: ((Error?) -> Void)? = nil) {
-        autosave { autosaveSuccess in
-            if autosaveSuccess {
-                self.safeClose(completion: completion)
-            } else {
-                completion?(SmartDocumentError.unableToSave)
-            }
+    public func autoSaveAndClose() async throws {
+        guard await autosave() else {
+            throw SmartDocumentError.unableToSave
         }
+        
+        try await safeClose()
     }
     
-    /// Upon being informed that our file will be deleted by a file coordinator, we need to force an autosave so the autosave engine doesnt re-write the file after its been removed.
-    public override func accommodatePresentedItemDeletion(completionHandler: @escaping (Error?) -> Void) {
-        self.autoSaveAndClose(completion: { [weak self] error in
-            completionHandler(error)
-            
-            self.flatMap{ $0.delegate?.smartDocumentDeletedOnOtherDevice($0)}
-        })
+    open override func accommodatePresentedItemDeletion() async throws {
+        do {
+            try await autoSaveAndClose()
+            self.delegate?.smartDocumentDeletedOnOtherDevice(self)
+        } catch {
+            self.delegate?.smartDocumentDeletedOnOtherDevice(self)
+            throw error
+        }
     }
 }
 
