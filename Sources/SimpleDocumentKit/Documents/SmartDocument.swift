@@ -26,7 +26,7 @@ public enum SmartDocumentError: Error {
 
 
 /// Delegate to receive events related to the document's state changing.
-public protocol SmartDocumentDelegate: class {
+public protocol SmartDocumentDelegate: AnyObject {
     func smartDocumentEnableEditing(_ doc: SmartDocument)
     func smartDocumentDisableEditing(_ doc: SmartDocument)
     func smartDocumentUpdatedContent(_ doc: SmartDocument)

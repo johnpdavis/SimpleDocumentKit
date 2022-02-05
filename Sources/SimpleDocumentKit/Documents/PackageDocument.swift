@@ -19,6 +19,13 @@ public typealias PackageDocContents = Codable & Defaultable & Equatable & NamedP
 public class PackageDocument<DATATYPE: PackageDocContents, MDATATYPE: PackageDocContents>: SmartDocument {
     
     // MARK: - Properties
+    var fileWrapper: FileWrapper? {
+        didSet {
+            if fileWrapper == nil {
+                assertionFailure("Do not set this to nil. The filewrapper is managed by UIDocument")
+            }
+        }
+    }
     
     private let dataFilename = DATATYPE.packageDocContentsName
     private let metaDataFilename = MDATATYPE.packageDocContentsName
@@ -68,8 +75,6 @@ public class PackageDocument<DATATYPE: PackageDocContents, MDATATYPE: PackageDoc
         privateMetaData = newValue
         updateChangeCount(.done)
     }
-    
-    var fileWrapper: FileWrapper?
     
     // MARK: - Initialization
     
