@@ -7,23 +7,7 @@
 
 import UIKit
 
-
-public struct FolderIdentifier: Hashable {
-    public let rawValue: String
-}
-
-public struct FileIdentifier: Hashable {
-    static public let metaData = FileIdentifier(rawValue: "com.johndavis.simpledocumentkit.cdoc.metadata")
-    public let rawValue: String
-}
-
 public typealias Archivable = NSCoding & NSObject
-
-public class RootMapItem: FolderMapItem {
-    public static var `default`: RootMapItem {
-        RootMapItem(filename: "ROOT_ITEM_SHOULD_NOT_USE_FILENAME")
-    }
-}
 
 // MARK: - ComposableDocumentError
 /// Errors thrown from the `ComposableDocument` class
