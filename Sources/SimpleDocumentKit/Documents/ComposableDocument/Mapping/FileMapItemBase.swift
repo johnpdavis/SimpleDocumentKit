@@ -5,18 +5,23 @@
 //  Created by John Davis on 2/4/22.
 //
 
-import Foundation
+import UIKit
 
 public enum FileMapItemError: Error {
     case unsupportedType
     case noFileWrapperAvailable
     case noFileDataAvailable
     case decodingReturnedNil
+    case noContentToEncode
 }
 
 public class FileMapItemBase {
     public var filename: String
-
+    
+    // This closure is populated with the document is attached to the map
+    public var updateChangeCount: ((UIDocument.ChangeKind) -> Void)?
+    public var contentDidChange: ((FileMapItemBase) -> Void)?
+    
     public weak var parent: FolderMapItem? = nil
     
     var _fileWrapper: FileWrapper? = nil
@@ -26,7 +31,7 @@ public class FileMapItemBase {
         return nil
     }
             
-    public init(filename: String) {
+    required public init(filename: String) {
         self.filename = filename
     }
     

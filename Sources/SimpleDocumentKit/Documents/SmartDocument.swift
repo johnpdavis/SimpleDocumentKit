@@ -177,4 +177,10 @@ extension SmartDocument {
             }
         }
     }
+    
+    open override func handleError(_ error: Error, userInteractionPermitted: Bool) {
+        super.handleError(error, userInteractionPermitted: userInteractionPermitted)
+        
+        print(error)
+    }
 }

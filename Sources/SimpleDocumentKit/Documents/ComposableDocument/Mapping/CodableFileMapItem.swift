@@ -8,11 +8,25 @@
 import Foundation
 
 public class CodableFileMapItem<CONTENT: Codable>: FileMapItemBase, FileContentsContaining {
+    
+    override var _fileWrapper: FileWrapper? {
+        didSet {
+            print("CODABLE FILE WRAPPER SET TO: \(_fileWrapper)")
+            if _fileWrapper != nil {
+                print("File wrapper set to non nil")
+            }
+        }
+    }
+    
     public var contentCache: CONTENT? = nil
     
     public func setContent(_ content: CONTENT) {
+        print("SETTING CONTENT")
         contentCache = content
+        contentDidChange?(self)
         _fileWrapper = nil
+
+        updateChangeCount?(.done)
     }
     
     public override var fileWrapper: FileWrapper? {
@@ -36,6 +50,10 @@ public class CodableFileMapItem<CONTENT: Codable>: FileMapItemBase, FileContents
     }
     
     public func encodeContent() throws -> Data {
+        guard let contentCache = contentCache else {
+            throw FileMapItemError.noContentToEncode
+        }
+
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
         let data = try encoder.encode(contentCache)

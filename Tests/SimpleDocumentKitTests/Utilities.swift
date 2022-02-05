@@ -9,7 +9,7 @@ import Foundation
 import SimpleDocumentKit
 
 enum Utilities {
-    static func createTestDocumentTmpURL() -> URL {
+    static func makeTestDocumentTmpURL() -> URL {
         let rootUrl = FileManager.default.temporaryDirectory
             .appendingPathComponent("\(UUID().uuidString).unittest")
         
@@ -17,7 +17,7 @@ enum Utilities {
     }
     
     static func createTestDocumentInFileSystem() -> URL {
-        let rootUrl = createTestDocumentTmpURL()
+        let rootUrl = makeTestDocumentTmpURL()
         
         let imagesURL = rootUrl.appendingPathComponent("images")
         let originalImagesURL = imagesURL.appendingPathComponent("originals")

@@ -5,7 +5,7 @@
 //  Created by John Davis on 2/4/22.
 //
 
-import Foundation
+import UIKit
 
 enum FolderMapItemError: Error {
     case rootDocumentFileNameNil
@@ -15,12 +15,28 @@ enum FolderMapItemError: Error {
 public class FolderMapItem: FileMapItemBase {
     var trackedChildren: [String: FileMapItemBase] = [:]
     
-    public override init(filename: String) {
+    public override var updateChangeCount: ((UIDocument.ChangeKind) -> Void)? {
+        didSet {
+            trackedChildren.forEach { key, child in
+                child.updateChangeCount = self.updateChangeCount
+            }
+        }
+    }
+    
+    public override required init(filename: String) {
         super.init(filename: filename)
     }
     
     public override var fileWrapper: FileWrapper? {
         if let fileWrapper = _fileWrapper {
+            
+            // Make sure we associate a wrapper for all kids
+            trackedChildren.forEach { key, child in
+                if let childWrapper = child.fileWrapper {
+                    fileWrapper.addFileWrapper(childWrapper)
+                }
+            }
+            
             return fileWrapper
         }
         
@@ -39,6 +55,16 @@ public class FolderMapItem: FileMapItemBase {
     public func addChild(_ item: FileMapItemBase) {
         item.parent = self
         trackedChildren[item.filename] = item
+        
+        item.contentDidChange = { [weak self] changedChild in
+            guard let self = self else { return }
+            
+            if let childWrapper = changedChild.fileWrapper {
+                self.fileWrapper?.removeFileWrapper(childWrapper)
+            }
+            self.contentDidChange?(self)
+            self.updateChangeCount?(.done)
+        }
     }
     
     override func attachMapToExistingDocumentFileWrapper(_ fileWrapper: FileWrapper) {
@@ -46,11 +72,11 @@ public class FolderMapItem: FileMapItemBase {
         
         trackedChildren.forEach { key, child in
             if let wrapper = fileWrapper.fileWrappers?[key] {
-                
-                if child._fileWrapper != nil {
-                    assertionFailure("We are assigning a document file wrapper to an item that already has one? This is odd to me.")
-                }
-                
+
+//                if child._fileWrapper == nil {
+//                    assertionFailure("We are setting over our filewrapper")
+//                }
+
                 child.attachMapToExistingDocumentFileWrapper(wrapper)
             }
         }

@@ -2,6 +2,7 @@
 //  Created by John Davis on 11/22/20.
 //
 
+#if !os(macOS)
 import UIKit
 import Combine
 
@@ -84,3 +85,4 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
         documentsUpdatedSubject.send(result)
     }
 }
+#endif

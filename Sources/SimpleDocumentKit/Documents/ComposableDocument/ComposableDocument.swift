@@ -51,6 +51,10 @@ open class ComposableDocument: SmartDocument {
     
     private func attachFileWrapper(_ fileWrapper: FileWrapper, to rootItem: RootMapItem) {
         rootItem.attachMapToExistingDocumentFileWrapper(fileWrapper)
+    
+        rootItem.updateChangeCount = { changeType in
+            self.updateChangeCount(changeType)
+        }
     }
 }
 

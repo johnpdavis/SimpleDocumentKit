@@ -13,6 +13,8 @@ public class ArchivableFileMapItem<CONTENT: Archivable>: FileMapItemBase, FileCo
     public func setContent(_ content: CONTENT) {
         contentCache = content
         _fileWrapper = nil
+        
+        updateChangeCount?(.done)
     }
     
     public override var fileWrapper: FileWrapper? {

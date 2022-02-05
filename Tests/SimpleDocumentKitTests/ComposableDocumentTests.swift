@@ -64,7 +64,7 @@ final class ComposableDocumentTests: XCTestCase {
     
     @MainActor
     func testEmptyDocumentInitialSave() async throws {
-        let testDocURL = Utilities.createTestDocumentTmpURL()
+        let testDocURL = Utilities.makeTestDocumentTmpURL()
         print(testDocURL)
         
         let docSetup = Utilities.makeComposedTestDocument(at: testDocURL)
@@ -72,18 +72,15 @@ final class ComposableDocumentTests: XCTestCase {
         let composableDocument = docSetup.composableDocument
         let metaDataItem = docSetup.metaDataFileItem
         
-        await composableDocument.open()
-        
         // Document should NOT YET exist in the file system structure.
         XCTAssertFalse(FileManager.default.fileExists(atPath: testDocURL.path))
         
         // Metadata of a freshly opened NEW document? Should fail to decode since there should be no data
-        XCTAssertNotNil(metaDataItem.fileWrapper)
+        XCTAssertNil(metaDataItem.fileWrapper)
         XCTAssertThrowsError(try metaDataItem.decodeContent())
         
-        composableDocument.updateChangeCount(.done)
-        
-        try await composableDocument.autoSaveAndClose()
+        // Save the document
+        await composableDocument.save(to: testDocURL, for: .forCreating)
         
         // Document should now exist in the folder structure.
         XCTAssertTrue(FileManager.default.fileExists(atPath: testDocURL.path))
@@ -96,24 +93,73 @@ final class ComposableDocumentTests: XCTestCase {
     }
     
     @MainActor
-    func testEmptyDocumentSaveWithMetaData() async throws {
-        let testDocURL = Utilities.createTestDocumentTmpURL()
+    func testEmptyDocumentAutoSaveWithMetaData() async throws {
+        let testDocURL = Utilities.makeTestDocumentTmpURL()
+        print(testDocURL)
         let docSetup = Utilities.makeComposedTestDocument(at: testDocURL)
         
         let composableDocument = docSetup.composableDocument
         let metaDataItem = docSetup.metaDataFileItem
         
-        await composableDocument.open()
+        await composableDocument.save(to: testDocURL, for: .forCreating)
         
         // Metadata of a freshly opened NEW document? Should fail to decode since there should be no data
-        XCTAssertNotNil(metaDataItem.fileWrapper)
+        XCTAssertNil(metaDataItem._fileWrapper)
         XCTAssertThrowsError(try metaDataItem.decodeContent())
         
-        let mockData = MockMetaData(id: "TestID", name: "TestName")
-        try metaDataItem.setContent(mockData)
+        await composableDocument.open()
         
+        let mockData = MockMetaData(id: "TestID", name: "TestName")
+        metaDataItem.setContent(mockData)
+
         // the newly set content SHOULD be accessible in the content cache directly, AND by the decode method's upfront check.
         XCTAssertEqual(metaDataItem.contentCache, mockData)
-        XCTAssertEqual(try metaDataItem.decodeContent(), mockData)
+        XCTAssertEqual(try! metaDataItem.decodeContent(), mockData)
+
+        try await composableDocument.autoSaveAndClose()
+
+        let metaDataURL = testDocURL.appendingPathComponent("metaData.json", isDirectory: false)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: metaDataURL.path))
+
+        let data = try Data(contentsOf: metaDataURL)
+        let metaDataFromFileSystem = try JSONDecoder().decode(MockMetaData.self, from: data)
+
+        XCTAssertEqual(mockData, metaDataFromFileSystem)
+    }
+    
+    @MainActor
+    func testDocumentAutoSaveWithMetaDataOverwrite() async throws {
+        let testDocURL = Utilities.makeTestDocumentTmpURL()
+        let docSetup = Utilities.makeComposedTestDocument(at: testDocURL)
+        
+        let composableDocument = docSetup.composableDocument
+        let metaDataItem = docSetup.metaDataFileItem
+        
+        await composableDocument.save(to: testDocURL, for: .forCreating)
+        await composableDocument.open()
+        
+        // FIRST POPULATION OF META DATA:
+        let mockData = MockMetaData(id: "TestID", name: "TestName")
+        metaDataItem.setContent(mockData)
+        
+        await composableDocument.autosave()
+        
+        let metaDataURL = testDocURL.appendingPathComponent("metaData.json", isDirectory: false)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: metaDataURL.path))
+        let data = try Data(contentsOf: metaDataURL)
+        let metaDataFromFileSystem = try JSONDecoder().decode(MockMetaData.self, from: data)
+        XCTAssertEqual(mockData, metaDataFromFileSystem)
+        
+        // SECOND POPULATION OF META DATA:
+        let mockData2 = MockMetaData(id: "TestID2", name: "TestName2")
+        metaDataItem.setContent(mockData2)
+        
+        await composableDocument.autosave()
+        
+        XCTAssertTrue(FileManager.default.fileExists(atPath: metaDataURL.path))
+        let data2 = try Data(contentsOf: metaDataURL)
+        let metaDataFromFileSystem2 = try JSONDecoder().decode(MockMetaData.self, from: data2)
+        XCTAssertNotEqual(mockData, metaDataFromFileSystem2)
+        XCTAssertEqual(mockData2, metaDataFromFileSystem2)
     }
 }
