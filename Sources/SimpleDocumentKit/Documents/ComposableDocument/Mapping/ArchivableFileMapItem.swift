@@ -10,10 +10,11 @@ import Foundation
 public class ArchivableFileMapItem<CONTENT: Archivable>: FileMapItemBase, FileContentsContaining {
     public var contentCache: CONTENT? = nil
     
-    public func setContent(_ content: CONTENT) {
+    public func setContent(_ content: CONTENT?) {
         contentCache = content
+        contentDidChange?(self)
         _fileWrapper = nil
-        
+
         updateChangeCount?(.done)
     }
     

@@ -16,6 +16,13 @@ enum Utilities {
         return rootUrl
     }
     
+    static func makeTestDocumentTmpRootURL() -> URL {
+        let rootUrl = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(UUID().uuidString)_localRoot")
+        
+        return rootUrl
+    }
+    
     static func createTestDocumentInFileSystem() -> URL {
         let rootUrl = makeTestDocumentTmpURL()
         

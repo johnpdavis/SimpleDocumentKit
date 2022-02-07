@@ -53,7 +53,7 @@ open class SmartDocument: UIDocument {
     /// To prevent spamming of the document state if it has not changed, we maintain the previous state to compare it to.
     private var previousDocumentState: UIDocument.State = []
     
-    public override init(fileURL url: URL) {
+    public override required init(fileURL url: URL) {
         docStateObserver = nil
         super.init(fileURL: url)
         

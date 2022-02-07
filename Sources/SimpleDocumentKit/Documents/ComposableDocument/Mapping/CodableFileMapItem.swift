@@ -20,8 +20,7 @@ public class CodableFileMapItem<CONTENT: Codable>: FileMapItemBase, FileContents
     
     public var contentCache: CONTENT? = nil
     
-    public func setContent(_ content: CONTENT) {
-        print("SETTING CONTENT")
+    public func setContent(_ content: CONTENT?) {
         contentCache = content
         contentDidChange?(self)
         _fileWrapper = nil

@@ -8,8 +8,11 @@
 import Combine
 import Foundation
 
+enum iCloudDocumentQueryCoordinatorError: Error {
+    case queryNotConfigured
+}
+
 public class iCloudDocumentQueryCoordinator: DocumentQueryCoordinator {
-    
     
     // MARK: Properties
     var currentQuery: NSMetadataQuery?
@@ -62,14 +65,28 @@ public class iCloudDocumentQueryCoordinator: DocumentQueryCoordinator {
     @objc
     private func onMetaDataQuery(_ notification: Notification) {
         DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.2, execute: { [weak self] in
-            self?.processFiles()
+            self?.processFilesAndSend()
         })
     }
 
-    public func processFiles() {
-        guard let currentQuery = currentQuery else { return }
-        
+    public func processFilesAndSend() {
+        do {
+            let result = try processFiles()
+            documentsUpdatedSubject.send(result)
+        } catch {
+            assertionFailure("Caught error attempting to process files: \(error)")
+        }
+    }
+
+    public func processFiles() throws -> DocumentsUpdatedResult {
+        guard let currentQuery = currentQuery else {
+            throw iCloudDocumentQueryCoordinatorError.queryNotConfigured
+        }
+
         currentQuery.disableUpdates()
+        defer {
+            currentQuery.enableUpdates()
+        }
         
         let newlyDiscoveredURLs: [URL] = currentQuery.results.compactMap { result in
             guard let result = result as? NSMetadataItem,
@@ -99,8 +116,6 @@ public class iCloudDocumentQueryCoordinator: DocumentQueryCoordinator {
         urlsReady = true
         
         let result: DocumentsUpdatedResult = .success((added: Array(newItems), updated: Array(updatedItems), removed: Array(removedItems)))
-        documentsUpdatedSubject.send(result)
-        
-        currentQuery.enableUpdates()
+        return result
     }
 }

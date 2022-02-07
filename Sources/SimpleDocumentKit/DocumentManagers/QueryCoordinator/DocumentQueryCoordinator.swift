@@ -17,6 +17,7 @@ public protocol DocumentQueryCoordinator {
 
     func startQuery()
     func stopQuery()
+    func processFiles() throws -> DocumentsUpdatedResult
     
     var urls: [URL] { get set }
     var documentsUpdatedPublisher: AnyPublisher<DocumentQueryCoordinator.DocumentsUpdatedResult, Never> { get }

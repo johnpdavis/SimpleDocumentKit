@@ -46,13 +46,9 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
             .eraseToAnyPublisher()
             .debounce(for: 0.2, scheduler: DispatchQueue.main)
             .sink(receiveValue: { [weak self] _ in
-                do {
-                    self?.stopQuery()
-                    try self?.processFiles()
-                    self?.startSubscriberPipeline()
-                } catch {
-                    assertionFailure("Caught error while processing directory:\(error)")
-                }
+                self?.stopQuery()
+                self?.processFilesAndSend()
+                self?.startSubscriberPipeline()
             })
     }
     
@@ -62,7 +58,17 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
         dispatchObserverCancelable = nil
     }
     
-    public func processFiles() throws {
+    public func processFilesAndSend() {
+        do {
+            let result = try processFiles()
+            print("SENDING")
+            documentsUpdatedSubject.send(result)
+        } catch {
+            assertionFailure("Caught error attempting to process files: \(error)")
+        }
+    }
+    
+    public func processFiles() throws -> DocumentsUpdatedResult {
         let newlyDiscoveredURLs = try FileManager.default.contentsOfDirectory(at: searchScope, includingPropertiesForKeys: [.nameKey],
                                                                               options: [.skipsPackageDescendants,
                                                                                         .skipsHiddenFiles])
@@ -82,7 +88,8 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
         urlsReady = true
         
         let result: DocumentsUpdatedResult = .success((added: Array(newItems), updated: Array(updatedItems), removed: Array(removedItems)))
-        documentsUpdatedSubject.send(result)
+        
+        return result
     }
 }
 #endif

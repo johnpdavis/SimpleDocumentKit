@@ -25,7 +25,7 @@ open class ComposableDocument: SmartDocument {
     public var mapRootItem = RootMapItem.default
     
     // MARK: - Initialization
-    public override init(fileURL url: URL) {
+    public required override init(fileURL url: URL) {
         super.init(fileURL: url)
     }
     
