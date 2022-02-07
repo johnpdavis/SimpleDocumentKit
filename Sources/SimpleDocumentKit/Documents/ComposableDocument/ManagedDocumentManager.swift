@@ -9,18 +9,7 @@ import Combine
 import Foundation
 import SwiftUI
 
-//enum Services {
-//    public static var documentManager: DocumentManager<ARGalleryMetaData, ARGalleryDocument> = {
-//        do {
-//            let instance = try DocumentManager<ARGalleryMetaData, ARGalleryDocument>()
-//            return instance
-//        } catch {
-//            fatalError("Unable to initialize file system wrapper: \(error)")
-//        }
-//    }()
-//}
-
-enum ComposableDocumentManagerError: Error {
+enum ManagedDocumentManagerError: Error {
     case documentURLInvalid
     case unableToRetrieveURL
     case unableToSaveNewDocument
@@ -61,10 +50,10 @@ class ManagedDocumentLoader<DOCUMENT: ManageableDocument>: AsyncSequence, AsyncI
 @MainActor
 public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObject {
     
-    private let documentDirectoryName: String // = "ARGalleries"
-    private let ubiquityContainerIdentifier: String  // = "iCloud.com.john.argallery"
+    private let documentDirectoryName: String
+    private let ubiquityContainerIdentifier: String
     public let managedDocumentDirectory: URL
-    public let managedDocumentExtension: String // = ".arvantage"
+    public let managedDocumentExtension: String
     
     let localDocumentManager: LocalDocumentManager
     let cloudDocumentManager: CloudDocumentManager
@@ -111,17 +100,19 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
         }
     }
     
-    public func locketForUUID(_ uuidString: String) -> DOCUMENT? {
-        return nil
-    }
-
-    public func removeCustomLocket(_ customLocketDocument: DOCUMENT, completion: ((Bool) -> Void)?) {
-        if localDocuments.contains(customLocketDocument) {
-            
-        } else if cloudDocuments.contains(customLocketDocument) {
-            
-        }
-    }
+//    public func documentForID(_ id: String) -> DOCUMENT? {
+//        return nil
+//    }
+//
+//    public func removeDocument(_ document: DOCUMENT, completion: ((Bool) -> Void)?) {
+//        if localDocuments.contains(document) {
+//
+//        }
+//
+//        if cloudDocuments.contains(document) {
+//
+//        }
+//    }
     
     private func initializeCloudDocManager() {
         cloudDocumentSubscriber = self.cloudDocumentManager.documentsUpdatedPublisher
@@ -218,32 +209,27 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
         }
     }
     
-//    /// Will attempt to return a Document with the provided name. This method will look in the designated storage area, iCloud or Local, depending on the app's settings. If the file does not exist, it will be created.
-//    ///
-//    /// - Parameters:
-//    ///   - name: Name of package with extension
-//    @MainActor
-//    public func document(name: String) async throws -> DOCUMENT { //} completion:((DOCUMENT?) -> ())?) {
-//        // If the file doesnt exist, make it. Otherwise return it.
-//        guard let url = urlForDocument(name: name) else { throw DocumentManagerError.unableToRetrieveURL }
-//
-//        if documentExistsWithName(name) {
-//            return DOCUMENT(fileURL: url)
-//        } else {
-//            let document = DOCUMENT(fileURL: url)
-//            document.setMetaData(ARGalleryMetaData.default(isTemporary: true) as! MDATATYPE)
-//
-//            let success = await document.save(to: url, for: .forCreating)
-//
-//            if success {
-//                document.fileWrapper = try FileWrapper(url: url, options: .withoutMapping)
-//                return document
-//            } else {
-//                print("FAILED TO SAVE FILE")
-//                throw DocumentManagerError.unableToSaveNewDocument
-//            }
-//        }
-//    }
+    /// Will attempt to return a Document with the provided name. This method will look in the designated storage area, iCloud or Local, depending on the app's settings. If the file does not exist, it will be created.
+    ///
+    /// - Parameters:
+    ///   - name: Name of package with extension
+    public func document(name: String, metaData: DOCUMENT.METADATA) async throws -> DOCUMENT { //} completion:((DOCUMENT?) -> ())?) {
+        // If the file doesnt exist, make it. Otherwise return it.
+        guard let url = urlForDocument(name: name) else { throw ManagedDocumentManagerError.unableToRetrieveURL }
+
+        if documentExistsWithName(name) {
+            return DOCUMENT(fileURL: url)
+        } else {
+            let document = DOCUMENT(fileURL: url)
+
+            if await document.save(to: url, for: .forCreating) {
+                return document
+            } else {
+                print("FAILED TO SAVE FILE")
+                throw ManagedDocumentManagerError.unableToSaveNewDocument
+            }
+        }
+    }
     
     /// Will change document name by invoking move
     ///
@@ -253,11 +239,11 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
     ///   - completion: Completion closure to be invoked when rename is complete. Will be invoked on main queue
     public func renameDocument(document: UIDocument, name: String) async throws {
         guard name != document.fileURL.lastPathComponent else {
-            throw ComposableDocumentManagerError.documentURLInvalid
+            throw ManagedDocumentManagerError.documentURLInvalid
         }
 
         guard let newURL = urlForDocument(name: name) else {
-            throw ComposableDocumentManagerError.unableToRetrieveURL
+            throw ManagedDocumentManagerError.unableToRetrieveURL
         }
 
         let originalURL = document.fileURL
