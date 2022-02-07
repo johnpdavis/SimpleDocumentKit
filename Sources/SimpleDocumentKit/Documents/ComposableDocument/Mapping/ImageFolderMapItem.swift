@@ -10,7 +10,7 @@ import UniformTypeIdentifiers
 
 public class ImageFolderMapItem: DynamicFolderMapItem {
 
-    var images: [UIImageFileMapItem] {
+    public var images: [UIImageFileMapItem] {
         untrackedChildren.compactMap { $0 as? UIImageFileMapItem }
     }
     
