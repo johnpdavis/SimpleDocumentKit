@@ -257,7 +257,7 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
     ///
     /// - Parameter name: Full name of document including extension.
     /// - Returns: True of document exists. Otherwise false.
-    func documentExistsWithName(_ name: String) -> Bool {
+    public func documentExistsWithName(_ name: String) -> Bool {
         guard let fullFileURL = urlForDocument(name: name) else { fatalError("Cannot construct full Document file URL") }
         
         return FileManager.default.fileExists(atPath:fullFileURL.path)
