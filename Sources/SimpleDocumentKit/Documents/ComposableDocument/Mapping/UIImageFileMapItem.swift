@@ -7,7 +7,7 @@
 
 import UIKit
 
-class UIImageFileMapItem: FileMapItemBase, FileContentsContaining  {
+public class UIImageFileMapItem: FileMapItemBase, FileContentsContaining  {
     
     public var contentCache: UIImage? = nil
     
@@ -20,7 +20,7 @@ class UIImageFileMapItem: FileMapItemBase, FileContentsContaining  {
         updateChangeCount?(.done)
     }
     
-    override var fileWrapper: FileWrapper? {
+    override public var fileWrapper: FileWrapper? {
         if let wrapper = _fileWrapper {
             return wrapper
         }
@@ -38,7 +38,7 @@ class UIImageFileMapItem: FileMapItemBase, FileContentsContaining  {
         return newWrapper
     }
     
-    func encodeContent() throws -> Data {
+    public func encodeContent() throws -> Data {
         guard let contentCache = contentCache else {
             throw FileMapItemError.noContentToEncode
         }
@@ -50,7 +50,7 @@ class UIImageFileMapItem: FileMapItemBase, FileContentsContaining  {
         return data
     }
     
-    func decodeContent() throws -> UIImage {
+    public func decodeContent() throws -> UIImage {
         if let decodedContentCache = contentCache {
             return decodedContentCache
         }

@@ -52,6 +52,7 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
     
     private let documentDirectoryName: String
     private let ubiquityContainerIdentifier: String
+    
     public let managedDocumentDirectory: URL
     public let managedDocumentExtension: String
     
