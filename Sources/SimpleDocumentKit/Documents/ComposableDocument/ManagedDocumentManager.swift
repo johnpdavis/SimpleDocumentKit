@@ -65,8 +65,8 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
     public var localIDToDoc: [String: DOCUMENT] = [:]
     public var cloudIDToDoc: [String: DOCUMENT] = [:]
     
-    @Published var localDocuments: [DOCUMENT] = []
-    @Published var cloudDocuments: [DOCUMENT] = []
+    @Published public var localDocuments: [DOCUMENT] = []
+    @Published public var cloudDocuments: [DOCUMENT] = []
     
     private var isListeningForUpdates: Bool
     
