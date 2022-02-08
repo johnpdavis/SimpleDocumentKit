@@ -202,7 +202,7 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
     ///
     /// - Parameter name: Name of document with extension
     /// - Returns: returns URL of document, or nil, if it could not be found or created
-    func urlForDocument(name: String) -> URL? {
+    public func urlForDocument(name: String) -> URL? {
         if ICloudDefaults.standard.iCloudOn {
             return cloudDocumentManager.iCloudURLForDocument(filename: name)
         } else {
