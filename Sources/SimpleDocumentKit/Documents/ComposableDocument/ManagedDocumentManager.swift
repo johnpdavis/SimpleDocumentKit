@@ -221,8 +221,8 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
         if documentExistsWithName(name) {
             return DOCUMENT(fileURL: url)
         } else {
-            let document = DOCUMENT(fileURL: url)
-
+            var document = DOCUMENT(fileURL: url)
+            document.metaData = metaData
             if await document.save(to: url, for: .forCreating) {
                 return document
             } else {
