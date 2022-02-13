@@ -27,6 +27,10 @@ open class ComposableDocument: SmartDocument {
     // MARK: - Initialization
     public required override init(fileURL url: URL) {
         super.init(fileURL: url)
+        
+        mapRootItem.updateChangeCount = { changeType in
+            self.updateChangeCount(changeType)
+        }
     }
     
     // MARK: - Public Document Interface
