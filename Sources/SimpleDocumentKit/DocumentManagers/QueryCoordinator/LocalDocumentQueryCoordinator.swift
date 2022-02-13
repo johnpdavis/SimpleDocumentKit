@@ -31,14 +31,9 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
     }
     
     public func startQuery() {
-        do {
-            print("Starting to watch: \(searchScope)")
-            processFilesAndSend()
-            startSubscriberPipeline()
-        } catch {
-            assertionFailure("Caught error while processing directory:\(error)")
-            startSubscriberPipeline()
-        }
+        print("Starting to watch: \(searchScope)")
+        processFilesAndSend()
+        startSubscriberPipeline()
     }
     
     func startSubscriberPipeline() {
