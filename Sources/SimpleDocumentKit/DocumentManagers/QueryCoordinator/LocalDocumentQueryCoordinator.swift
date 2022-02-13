@@ -35,7 +35,7 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
         processFilesAndSend()
         startSubscriberPipeline()
     }
-    
+
     func startSubscriberPipeline() {
         dispatchObserverCancelable = dispatchObserver.changeObservedSubject
             .eraseToAnyPublisher()

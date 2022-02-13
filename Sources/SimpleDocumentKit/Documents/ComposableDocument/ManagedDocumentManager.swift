@@ -13,37 +13,35 @@ enum ManagedDocumentManagerError: Error {
     case documentURLInvalid
     case unableToRetrieveURL
     case unableToSaveNewDocument
+    case unableToReadMetaData
 }
 
 public typealias ManageableDocument = SmartDocument & ManageableMetaDataContaining
 
-class ManagedDocumentLoader<DOCUMENT: ManageableDocument>: AsyncSequence, AsyncIteratorProtocol {
+class ManagedDocumentsLoader<DOCUMENT: ManageableDocument> {
     typealias LoadedManagedDocument = (document: DOCUMENT, id: String, name: String)
-    typealias Element = LoadedManagedDocument
-    
-    private var documentURLs: [URL] = []
-    
-    init(documentURLs: [URL]) {
-        self.documentURLs = documentURLs
-    }
-    
-    func next() async -> LoadedManagedDocument? {
-        await getNextDocument()
-    }
-    
-    func makeAsyncIterator() -> some ManagedDocumentLoader {
-        self
-    }
-    
-    private func getNextDocument() async -> LoadedManagedDocument? {
-        guard let nextURL = documentURLs.popLast() else { return nil }
-        
-        let document = await DOCUMENT(fileURL: nextURL)
-        await document.open()
-        guard let metaData = document.metaData else { return nil }
-        await document.close()
-        
-        return (document: document, id: metaData.id, name: metaData.name)
+
+    func loadDocuments(from urls: [URL]) async throws -> [LoadedManagedDocument] {
+        return await withTaskGroup(of: Optional<LoadedManagedDocument>.self, returning: [LoadedManagedDocument].self) { taskGroup in
+            var results: [LoadedManagedDocument] = []
+            
+            for url in urls {
+                _ = taskGroup.addTaskUnlessCancelled {
+                    let document = await DOCUMENT(fileURL: url)
+                    await document.open()
+                    guard let metaData = document.metaData else { return nil }
+                    await document.close()
+                    
+                    return (document: document, id: metaData.id, name: metaData.name)
+                }
+            }
+            
+            for await loadedDocument in taskGroup {
+                loadedDocument.flatMap { results.append($0) }
+            }
+            
+            return results
+        }
     }
 }
 
@@ -172,18 +170,20 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
         case .success(let docURLs):
             print("Received Document URLs - \(docURLs.added.count) Added -  \(docURLs.updated.count) updated -  \(docURLs.removed.count) Removed")
             var newUUIDMap: [String: DOCUMENT] = [:]
-
-            let addedDocsLoader = ManagedDocumentLoader<DOCUMENT>(documentURLs: docURLs.added)
-            let updatedDocsLoader = ManagedDocumentLoader<DOCUMENT>(documentURLs: docURLs.updated)
             
-            func processLoader(_ loader: ManagedDocumentLoader<DOCUMENT>) async {
-                for await loadedDoc in loader {
-                    newUUIDMap["\(loadedDoc.id)"] = loadedDoc.document
-                }
+            let docsLoader = ManagedDocumentsLoader<DOCUMENT>()
+            
+            async let addedDocs = docsLoader.loadDocuments(from: docURLs.added)
+            async let updatedDocs = docsLoader.loadDocuments(from: docURLs.updated)
+            
+            try? await addedDocs.forEach { doc in
+                newUUIDMap[doc.id] = doc.document
             }
-            await processLoader(addedDocsLoader)
-            await processLoader(updatedDocsLoader)
             
+            try? await updatedDocs.forEach { doc in
+                newUUIDMap[doc.id] = doc.document
+            }
+        
             let documents = Array(newUUIDMap.values)
             let sortedDocuments = documents.sorted {
                 guard let firstName = $0.metaData?.name,
