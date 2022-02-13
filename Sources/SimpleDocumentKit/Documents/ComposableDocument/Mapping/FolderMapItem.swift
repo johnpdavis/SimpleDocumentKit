@@ -62,8 +62,15 @@ public class FolderMapItem: FileMapItemBase {
             if let childWrapper = changedChild.fileWrapper {
                 self.fileWrapper?.removeFileWrapper(childWrapper)
             }
-            self.contentDidChange?(self)
-            self.updateChangeCount?(.done)
+            
+            // if we have a configured we delegate the did-change up the chain,
+            // but if we don't have a callback, we want to kill our own fileWrapper, otherwise our wrapper won't be re-made
+            if self.contentDidChange != nil {
+                self.contentDidChange?(self)
+            } else {
+                self._fileWrapper = nil
+                self.updateChangeCount?(.done)
+            }
         }
     }
     
