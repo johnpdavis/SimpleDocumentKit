@@ -21,6 +21,10 @@ public class ImageFolderMapItem: DynamicFolderMapItem {
         super.init(filename: filename, supportedUntrackedTypes: imageFileTypes)
     }
     
+    public func setImageMapItems(_ imageMapItems: [UIImageFileMapItem]) {
+        untrackedChildren = imageMapItems
+    }
+    
     public func setImages(_ images: [UIImage]) {
         let items: [UIImageFileMapItem] = images.map { image in
             let item = UIImageFileMapItem(filename: "\(UUID().uuidString).png")
@@ -28,6 +32,6 @@ public class ImageFolderMapItem: DynamicFolderMapItem {
             return item
         }
         
-        untrackedChildren = items
+        setImageMapItems(items)
     }
 }
