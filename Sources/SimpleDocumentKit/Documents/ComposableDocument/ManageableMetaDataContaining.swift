@@ -19,3 +19,7 @@ public protocol ManageableMetaDataContaining {
     associatedtype METADATA: ManageableDocumentMetaData
     var metaData: METADATA? { get set }
 }
+
+public protocol ResettableDocument {
+    func resetComposableMap()
+}

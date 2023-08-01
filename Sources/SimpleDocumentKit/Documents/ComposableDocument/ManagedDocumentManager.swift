@@ -16,7 +16,7 @@ enum ManagedDocumentManagerError: Error {
     case unableToReadMetaData
 }
 
-public typealias ManageableDocument = SmartDocument & ManageableMetaDataContaining
+public typealias ManageableDocument = SmartDocument & ManageableMetaDataContaining & ResettableDocument
 
 class ManagedDocumentsLoader<DOCUMENT: ManageableDocument> {
     typealias LoadedManagedDocument = (document: DOCUMENT, id: String, name: String)
@@ -133,7 +133,7 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
             .receive(on: DispatchQueue.main)
             .sink { [weak self] result in
                 Task { [weak self] in
-                    print("Received Cloud result: \(result)")
+                    print("Received Local result: \(result)")
                     await self?.processLocalResult(result)
                 }
             }
@@ -143,7 +143,7 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
     
     func processLocalResult(_ result: Result<(added: [URL], updated: [URL], removed: [URL]), Error>) async {
         do {
-            async let (map, list) = try ManagedDocumentManager.processResult(result)
+            async let (map, list) = try ManagedDocumentManager.processResult(result, currentMap: localIDToDoc)
             localIDToDoc = try await map
             localDocuments = try await list
         } catch {
@@ -153,7 +153,7 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
     
     func processCloudResult(_ result: Result<(added: [URL], updated: [URL], removed: [URL]), Error>) async {
         do {
-            let (map, list) = try await ManagedDocumentManager.processResult(result)
+            let (map, list) = try await ManagedDocumentManager.processResult(result, currentMap: cloudIDToDoc)
             cloudIDToDoc = map
             cloudDocuments = list
         } catch {
@@ -162,7 +162,7 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
     }
 
 
-    static func processResult(_ result: Result<(added: [URL], updated: [URL], removed: [URL]), Error>) async throws -> ([String: DOCUMENT], [DOCUMENT]) {
+    static func processResult(_ result: Result<(added: [URL], updated: [URL], removed: [URL]), Error>, currentMap: [String: DOCUMENT]) async throws -> ([String: DOCUMENT], [DOCUMENT]) {
         switch result {
         case .failure(let error):
             print("Received Document Failure: \(error)")
@@ -181,7 +181,12 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
             }
             
             try? await updatedDocs.forEach { doc in
-                newUUIDMap[doc.id] = doc.document
+                if let currentDoc = currentMap[doc.id] {
+                    currentDoc.resetComposableMap()
+                    newUUIDMap[doc.id] = currentDoc
+                } else {
+                    newUUIDMap[doc.id] = doc.document
+                }
             }
         
             let documents = Array(newUUIDMap.values)
