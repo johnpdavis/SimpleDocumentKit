@@ -18,16 +18,21 @@ open class DirectoryDispatchObserver {
     
     var changeObservedSubject = PassthroughSubject<Bool, Never>()
     
+    var childMonitors: [DirectoryDispatchObserver] = []
+    
     init(url: URL) {
         self.url = url
     }
     
     func startWatching() {
+        stopWatching()
         _ = subscribeToEvents()
     }
     
     func stopWatching() {
         monitoredSource?.cancel()
+        childMonitors.forEach { $0.stopWatching() }
+        childMonitors = []
     }
 
     private func subscribeToEvents() -> Bool {
@@ -57,6 +62,23 @@ open class DirectoryDispatchObserver {
         monitoredSource?.setCancelHandler(handler: cancelHandler)
         monitoredSource?.resume()
         
+        monitorSubdirectories()
+        
         return true
+    }
+    
+    func monitorSubdirectories() {
+        // Monitor subdirectories
+        if let children = try? FileManager.default.contentsOfDirectory(at: self.url, includingPropertiesForKeys: [.isDirectoryKey]) {
+            for child in children {
+                var isDirectory: ObjCBool = false
+                
+                if FileManager.default.fileExists(atPath: child.path, isDirectory: &isDirectory), isDirectory.boolValue {
+                    let subdirectoryMonitor = DirectoryDispatchObserver(url: child)
+                    childMonitors.append(subdirectoryMonitor)
+                    subdirectoryMonitor.startWatching()
+                }
+            }
+        }
     }
 }
