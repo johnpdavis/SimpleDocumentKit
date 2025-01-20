@@ -74,15 +74,14 @@ extension FileManager {
     ///   - currentURL: Current location of file to move
     ///   - newURL: New location to move file to
     ///   - completion: Completion block to invoke when file move is complete. Will be invoked on the main thread.
-    public func moveUbiquitousItem(at currentURL: URL, to newURL: URL) async throws {
+    public static func moveUbiquitousItem(at currentURL: URL, to newURL: URL) async throws {
         
         func coordinateMoveFile(at currentURL: URL, to newURL: URL) async throws {
             var error: NSError? = nil
             let coordinator = NSFileCoordinator(filePresenter: nil)
             
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                coordinator.coordinate(writingItemAt: currentURL, options: .forMoving, writingItemAt: newURL, options: .forReplacing, error: &error) { [weak self, error] currentURL, newURL in
-                    guard let self = self else { return }
+                coordinator.coordinate(writingItemAt: currentURL, options: .forMoving, writingItemAt: newURL, options: .forReplacing, error: &error) { [error] currentURL, newURL in
                     if let error = error {
                         print("Error with coordinator: \(error)")
                         continuation.resume(throwing: error)
@@ -90,7 +89,7 @@ extension FileManager {
                     
                     do {
                         coordinator.item(at: currentURL, willMoveTo: newURL)
-                        try self.moveItem(at: currentURL, to: newURL)
+                        try FileManager.default.moveItem(at: currentURL, to: newURL)
                         coordinator.item(at: currentURL, didMoveTo: newURL)
                         continuation.resume()
                     } catch {

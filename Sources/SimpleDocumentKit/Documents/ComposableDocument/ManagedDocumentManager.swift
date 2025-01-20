@@ -255,7 +255,7 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
         let originalURL = document.fileURL
 
         print("Invoking Move \(originalURL) \n=>\n\(newURL)")
-        try await FileManager.default.moveUbiquitousItem(at: originalURL, to: newURL)
+        try await FileManager.moveUbiquitousItem(at: originalURL, to: newURL)
     }
     
     /// Will create the full document URL by invoking `urlForDocument(name:)` and ask NSFileManager if the URL exists.
