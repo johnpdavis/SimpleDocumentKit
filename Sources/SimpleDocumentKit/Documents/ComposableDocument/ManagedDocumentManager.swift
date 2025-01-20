@@ -22,7 +22,7 @@ class ManagedDocumentsLoader<DOCUMENT: ManageableDocument> {
     typealias LoadedManagedDocument = (document: DOCUMENT, id: String, name: String)
 
     func loadDocuments(from urls: [URL]) async throws -> [LoadedManagedDocument] {
-        return try await withThrowingTaskGroup(of: Optional<LoadedManagedDocument>.self, returning: [LoadedManagedDocument].self) { taskGroup in
+        return await withTaskGroup(of: Optional<LoadedManagedDocument>.self, returning: [LoadedManagedDocument].self) { taskGroup in
             var results: [LoadedManagedDocument] = []
             
             for url in urls {
@@ -36,9 +36,7 @@ class ManagedDocumentsLoader<DOCUMENT: ManageableDocument> {
                 }
             }
             
-            try Task.checkCancellation()
-            
-            for try await loadedDocument in taskGroup {
+            for await loadedDocument in taskGroup {
                 loadedDocument.flatMap { results.append($0) }
             }
             
@@ -145,9 +143,9 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
     
     func processLocalResult(_ result: Result<(added: [URL], updated: [URL], removed: [URL]), Error>) async {
         do {
-            let (map, list) = try await ManagedDocumentManager.processResult(result, currentMap: localIDToDoc)
-            localIDToDoc = map
-            localDocuments = list
+            async let (map, list) = try ManagedDocumentManager.processResult(result, currentMap: localIDToDoc)
+            localIDToDoc = try await map
+            localDocuments = try await list
         } catch {
             print("processing failed: \(error)")
         }
@@ -175,16 +173,15 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
             
             let docsLoader = ManagedDocumentsLoader<DOCUMENT>()
             
-            let addedDocs = try await docsLoader.loadDocuments(from: docURLs.added)
-            let updatedDocs = try await docsLoader.loadDocuments(from: docURLs.updated)
+            async let addedDocs = docsLoader.loadDocuments(from: docURLs.added)
+            async let updatedDocs = docsLoader.loadDocuments(from: docURLs.updated)
             
-            addedDocs.forEach { doc in
+            try? await addedDocs.forEach { doc in
                 newUUIDMap[doc.id] = doc.document
             }
             
-            updatedDocs.forEach { doc in
-                // We check for the file existing incase a rename has been caught. 
-                if let currentDoc = currentMap[doc.id], FileManager.default.fileExists(atPath: currentDoc.fileURL.path) {
+            try? await updatedDocs.forEach { doc in
+                if let currentDoc = currentMap[doc.id] {
                     currentDoc.resetComposableMap()
                     newUUIDMap[doc.id] = currentDoc
                 } else {
