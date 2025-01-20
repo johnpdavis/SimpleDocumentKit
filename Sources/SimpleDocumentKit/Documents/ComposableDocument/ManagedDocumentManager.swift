@@ -176,18 +176,27 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
             async let addedDocs = docsLoader.loadDocuments(from: docURLs.added)
             async let updatedDocs = docsLoader.loadDocuments(from: docURLs.updated)
             
-            try? await addedDocs.forEach { doc in
-                newUUIDMap[doc.id] = doc.document
-            }
-            
-            try? await updatedDocs.forEach { doc in
-                // We check for the file existing incase a rename has been caught. 
-                if let currentDoc = currentMap[doc.id], FileManager.default.fileExists(atPath: currentDoc.fileURL.path) {
-                    currentDoc.resetComposableMap()
-                    newUUIDMap[doc.id] = currentDoc
-                } else {
+            do {
+                try await addedDocs.forEach { doc in
                     newUUIDMap[doc.id] = doc.document
                 }
+            }
+            catch {
+                print("Error: \(error)")
+            }
+            
+            do {
+                try await updatedDocs.forEach { doc in
+                    // We check for the file existing incase a rename has been caught.
+                    if let currentDoc = currentMap[doc.id], FileManager.default.fileExists(atPath: currentDoc.fileURL.path) {
+                        currentDoc.resetComposableMap()
+                        newUUIDMap[doc.id] = currentDoc
+                    } else {
+                        newUUIDMap[doc.id] = doc.document
+                    }
+                }
+            } catch {
+                print("Error: \(error)")
             }
         
             let documents = Array(newUUIDMap.values)
