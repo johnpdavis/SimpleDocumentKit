@@ -181,7 +181,8 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
             }
             
             try? await updatedDocs.forEach { doc in
-                if let currentDoc = currentMap[doc.id] {
+                // We check for the file existing incase a rename has been caught. 
+                if let currentDoc = currentMap[doc.id], FileManager.default.fileExists(atPath: currentDoc.fileURL.path) {
                     currentDoc.resetComposableMap()
                     newUUIDMap[doc.id] = currentDoc
                 } else {
