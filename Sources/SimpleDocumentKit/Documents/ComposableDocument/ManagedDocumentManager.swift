@@ -22,7 +22,7 @@ class ManagedDocumentsLoader<DOCUMENT: ManageableDocument> {
     typealias LoadedManagedDocument = (document: DOCUMENT, id: String, name: String)
 
     func loadDocuments(from urls: [URL]) async throws -> [LoadedManagedDocument] {
-        return await withTaskGroup(of: Optional<LoadedManagedDocument>.self, returning: [LoadedManagedDocument].self) { taskGroup in
+        return try await withThrowingTaskGroup(of: Optional<LoadedManagedDocument>.self, returning: [LoadedManagedDocument].self) { taskGroup in
             var results: [LoadedManagedDocument] = []
             
             for url in urls {
@@ -36,7 +36,9 @@ class ManagedDocumentsLoader<DOCUMENT: ManageableDocument> {
                 }
             }
             
-            for await loadedDocument in taskGroup {
+            try Task.checkCancellation()
+            
+            for try await loadedDocument in taskGroup {
                 loadedDocument.flatMap { results.append($0) }
             }
             
@@ -143,9 +145,9 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
     
     func processLocalResult(_ result: Result<(added: [URL], updated: [URL], removed: [URL]), Error>) async {
         do {
-            async let (map, list) = try ManagedDocumentManager.processResult(result, currentMap: localIDToDoc)
-            localIDToDoc = try await map
-            localDocuments = try await list
+            let (map, list) = try await ManagedDocumentManager.processResult(result, currentMap: localIDToDoc)
+            localIDToDoc = map
+            localDocuments = list
         } catch {
             print("processing failed: \(error)")
         }
