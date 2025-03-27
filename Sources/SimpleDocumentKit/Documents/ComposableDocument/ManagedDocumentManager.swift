@@ -16,7 +16,7 @@ enum ManagedDocumentManagerError: Error {
     case unableToReadMetaData
 }
 
-public typealias ManageableDocument = SmartDocument & ManageableMetaDataContaining & ResettableDocument
+public typealias ManageableDocument = SmartDocument & ManageableMetaDataContaining
 
 class ManagedDocumentsLoader<DOCUMENT: ManageableDocument> {
     typealias LoadedManagedDocument = (document: DOCUMENT, id: String, name: String)
@@ -161,7 +161,6 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
         }
     }
 
-
     static func processResult(_ result: Result<(added: [URL], updated: [URL], removed: [URL]), Error>, currentMap: [String: DOCUMENT]) async throws -> ([String: DOCUMENT], [DOCUMENT]) {
         switch result {
         case .failure(let error):
@@ -182,7 +181,7 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
             
             try? await updatedDocs.forEach { doc in
                 if let currentDoc = currentMap[doc.id] {
-                    currentDoc.resetComposableMap()
+                    (currentDoc as? ResettableDocument)?.resetComposableMap()
                     newUUIDMap[doc.id] = currentDoc
                 } else {
                     newUUIDMap[doc.id] = doc.document

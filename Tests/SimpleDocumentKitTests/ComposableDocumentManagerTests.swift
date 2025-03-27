@@ -10,7 +10,7 @@ import XCTest
 
 extension MockMetaData: ManageableDocumentMetaData { }
 
-class MockComposableDocument: ComposableDocument, ManageableMetaDataContaining, ResettableDocument {
+class MockComposableDocument: ComposableDocument, ManageableMetaDataContaining {
     typealias METADATA = MockMetaData
     
     let metaDataItem = CodableFileMapItem<MockMetaData>(filename: "metaData.json")
@@ -32,11 +32,6 @@ class MockComposableDocument: ComposableDocument, ManageableMetaDataContaining, 
     
     func initMetaDataForDocumentCreation(metaData: MockMetaData) {
         self.metaData = metaData
-    }
-    
-    func resetComposableMap() {
-        metaDataItem.contentCache = nil
-        updateChangeCount(.done)
     }
     
     required init(fileURL url: URL) {
