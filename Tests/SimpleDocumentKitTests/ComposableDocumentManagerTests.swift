@@ -30,12 +30,16 @@ class MockComposableDocument: ComposableDocument, ManageableMetaDataContaining, 
         }
     }
     
+    func initMetaDataForDocumentCreation(metaData: MockMetaData) {
+        self.metaData = metaData
+    }
+    
     func resetComposableMap() {
         metaDataItem.contentCache = nil
         updateChangeCount(.done)
     }
     
-    override required init(fileURL url: URL) {
+    required init(fileURL url: URL) {
         super.init(fileURL: url)
         mapRootItem.addChild(metaDataItem)
     }

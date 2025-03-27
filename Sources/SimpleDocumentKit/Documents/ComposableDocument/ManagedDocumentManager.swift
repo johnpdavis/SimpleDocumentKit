@@ -215,25 +215,40 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
         }
     }
     
+    func dedupedFileName(basename: String, increment: Int, ext: String) -> String {
+        let fullName = if increment > 0 {
+            "\(basename)_\(increment)"
+        } else {
+            basename
+        }
+        
+        return [fullName, ext].joined(separator: ".")
+    }
+    
     /// Will attempt to return a Document with the provided name. This method will look in the designated storage area, iCloud or Local, depending on the app's settings. If the file does not exist, it will be created.
     ///
     /// - Parameters:
     ///   - name: Name of package with extension
-    public func document(name: String, metaData: DOCUMENT.METADATA) async throws -> DOCUMENT { //} completion:((DOCUMENT?) -> ())?) {
-        // If the file doesnt exist, make it. Otherwise return it.
-        guard let url = urlForDocument(name: name) else { throw ManagedDocumentManagerError.unableToRetrieveURL }
-
-        if documentExistsWithName(name) {
-            return DOCUMENT(fileURL: url)
-        } else {
-            var document = DOCUMENT(fileURL: url)
-            document.metaData = metaData
-            if await document.save(to: url, for: .forCreating) {
-                return document
+    public func createDocument(fileName_base: String, metaData: DOCUMENT.METADATA) async throws -> DOCUMENT {
+        var baseNameIncrement: Int = 0
+        var newDocumentName: String!
+        while newDocumentName == nil {
+            let newName = dedupedFileName(basename: fileName_base, increment: baseNameIncrement, ext: managedDocumentExtension)
+            if documentExistsWithName(newName) {
+                baseNameIncrement += 1
             } else {
-                print("FAILED TO SAVE FILE")
-                throw ManagedDocumentManagerError.unableToSaveNewDocument
+                newDocumentName = newName
             }
+        }
+        
+        guard let url = urlForDocument(name: newDocumentName) else { throw ManagedDocumentManagerError.unableToRetrieveURL }
+        let document = DOCUMENT(fileURL: url)
+        document.initMetaDataForDocumentCreation(metaData: metaData)
+        if await document.save(to: url, for: .forCreating) {
+            return document
+        } else {
+            print("FAILED TO SAVE FILE")
+            throw ManagedDocumentManagerError.unableToSaveNewDocument
         }
     }
     

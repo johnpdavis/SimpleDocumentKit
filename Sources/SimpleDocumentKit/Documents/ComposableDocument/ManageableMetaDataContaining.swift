@@ -17,7 +17,8 @@ public protocol ManageableDocumentMetaData: Identifiable, Nameable {
 
 public protocol ManageableMetaDataContaining {
     associatedtype METADATA: ManageableDocumentMetaData
-    var metaData: METADATA? { get set }
+    var metaData: METADATA? { get }
+    func initMetaDataForDocumentCreation(metaData: METADATA)
 }
 
 public protocol ResettableDocument {
