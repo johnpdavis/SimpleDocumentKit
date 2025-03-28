@@ -68,16 +68,14 @@ public class iCloudDocumentQueryCoordinator: DocumentQueryCoordinator {
         DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.2, execute: { [weak self] in
             
             print(notification.userInfo)
-            self?.currentQuery?.disableUpdates()
             self?.processFilesAndSend()
-            self?.currentQuery?.enableUpdates()
         })
     }
 
     public func processFilesAndSend() {
         do {
             let result = try processFiles()
-            documentsUpdatedSubject.send(result)
+//            documentsUpdatedSubject.send(result)
         } catch {
             assertionFailure("Caught error attempting to process files: \(error)")
         }
