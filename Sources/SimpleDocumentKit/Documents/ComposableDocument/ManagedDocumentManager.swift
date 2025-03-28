@@ -99,20 +99,6 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
         }
     }
     
-//    public func documentForID(_ id: String) -> DOCUMENT? {
-//        return nil
-//    }
-//
-//    public func removeDocument(_ document: DOCUMENT, completion: ((Bool) -> Void)?) {
-//        if localDocuments.contains(document) {
-//
-//        }
-//
-//        if cloudDocuments.contains(document) {
-//
-//        }
-//    }
-    
     private func initializeCloudDocManager() {
         cloudDocumentSubscriber = self.cloudDocumentManager.documentsUpdatedPublisher
             .debounce(for: 0.2, scheduler: DispatchQueue.main)
@@ -256,20 +242,48 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
     /// - Parameters:
     ///   - document: Document to move to newly named URL
     ///   - name: New name of document including extension
-    ///   - completion: Completion closure to be invoked when rename is complete. Will be invoked on main queue
-    public func renameDocument(document: UIDocument, name: String) async throws {
+    public func renameDocument(document: DOCUMENT, name: String) async throws {
+        try await document.autoSaveAndClose()
+        
         guard name != document.fileURL.lastPathComponent else {
+            // Can't rename to same name
+            throw ManagedDocumentManagerError.documentURLInvalid
+        }
+        
+        guard !documentExistsWithName(name) else {
             throw ManagedDocumentManagerError.documentURLInvalid
         }
 
         guard let newURL = urlForDocument(name: name) else {
             throw ManagedDocumentManagerError.unableToRetrieveURL
         }
-
-        let originalURL = document.fileURL
-
-        print("Invoking Move \(originalURL) \n=>\n\(newURL)")
-        try await FileManager.moveUbiquitousItem(at: originalURL, to: newURL)
+  
+        try await FileManager.moveUbiquitousItem(at: document.fileURL, to: newURL)
+    }
+    
+    
+    public func removeDocument(_ document: DOCUMENT) async throws {
+        try await document.autoSaveAndClose()
+        
+        let _: Void = try await withCheckedThrowingContinuation { continuation in
+            let coordinator = NSFileCoordinator(filePresenter: document)
+            var coordinatorError: NSError?
+            coordinator.coordinate(writingItemAt: document.fileURL, options: .forDeleting, error: &coordinatorError) { [coordinatorError] url in
+                if let coordinatorError {
+                    continuation.resume(throwing: coordinatorError)
+                    return
+                }
+                
+                do {
+                    try FileManager.default.removeItem(at: url)
+                } catch {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                
+                continuation.resume(returning: ())
+            }
+        }
     }
     
     /// Will create the full document URL by invoking `urlForDocument(name:)` and ask NSFileManager if the URL exists.
