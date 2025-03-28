@@ -26,9 +26,6 @@ class ManagedDocumentsLoader<DOCUMENT: ManageableDocument> {
             for url in urls {
                 _ = taskGroup.addTaskUnlessCancelled {
                     let document = await DOCUMENT(fileURL: url)
-                    await document.open() // await Self.coordinatedDocumentOpen(at: url) else { return nil }
-                    guard let metaData = document.metaData else { return nil }
-                    await document.close()
                     
                     return document
                 }
