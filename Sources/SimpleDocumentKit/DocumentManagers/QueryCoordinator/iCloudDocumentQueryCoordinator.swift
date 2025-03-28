@@ -75,7 +75,7 @@ public class iCloudDocumentQueryCoordinator: DocumentQueryCoordinator {
     public func processFilesAndSend() {
         do {
             let result = try processFiles()
-//            documentsUpdatedSubject.send(result)
+            documentsUpdatedSubject.send(result)
         } catch {
             assertionFailure("Caught error attempting to process files: \(error)")
         }
@@ -113,12 +113,12 @@ public class iCloudDocumentQueryCoordinator: DocumentQueryCoordinator {
         
         let newItems = newURLSet.filter { !currentURLSet.contains($0) }
         let removedItems = currentURLSet.filter { !newURLSet.contains($0) }
-        let updatedItems = currentURLSet.filter { newURLSet.contains($0) }
+//        let updatedItems = currentURLSet.filter { newURLSet.contains($0) }
         
         urls = newlyDiscoveredURLs
         urlsReady = true
         
-        let result: DocumentsUpdatedResult = .success((added: Array(newItems), updated: Array(updatedItems), removed: Array(removedItems)))
+        let result: DocumentsUpdatedResult = .success((added: Array(newItems), updated: [], removed: Array(removedItems)))
         return result
     }
 }
