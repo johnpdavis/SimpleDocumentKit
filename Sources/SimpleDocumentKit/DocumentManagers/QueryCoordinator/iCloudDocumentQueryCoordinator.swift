@@ -35,6 +35,7 @@ public class iCloudDocumentQueryCoordinator: DocumentQueryCoordinator {
     func makeDocumentQuery(searchScope: Any, documentExtension: String) -> NSMetadataQuery {
         let query = NSMetadataQuery()
         query.searchScopes = [searchScope]
+        query.notificationBatchingInterval = 1
         query.predicate = NSPredicate(format: "%K LIKE %@", NSMetadataItemFSNameKey, "*\(documentExtension)")
         // NSPredicate(format: "%K.URLByDeletingLastPathComponent.path == %@", argumentArray: [NSMetadataItemURLKey, iCloudDocsURL.path])
         
@@ -65,7 +66,9 @@ public class iCloudDocumentQueryCoordinator: DocumentQueryCoordinator {
     @objc
     private func onMetaDataQuery(_ notification: Notification) {
         DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.2, execute: { [weak self] in
+            self?.currentQuery?.disableUpdates()
             self?.processFilesAndSend()
+            self?.currentQuery?.enableUpdates()
         })
     }
 
