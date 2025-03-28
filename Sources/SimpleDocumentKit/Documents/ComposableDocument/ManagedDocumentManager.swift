@@ -127,6 +127,10 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
         localDocumentManager.startQueryingDocuments()
     }
     
+    public func scaniCloudOptIn(promptForOptIn:@escaping (() -> ()), completion: @escaping (() -> Void)) {
+        cloudDocumentManager.scaniCloudOptIn(promptForOptIn: promptForOptIn, completion: completion)
+    }
+    
     func processLocalResult(_ result: Result<(added: [URL], updated: [URL], removed: [URL]), Error>) async {
         do {
             async let (map, list) = try ManagedDocumentManager.processResult(result, currentMap: localIDToDoc)
