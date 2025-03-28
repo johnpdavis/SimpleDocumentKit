@@ -21,15 +21,15 @@ public typealias ManageableDocument = SmartDocument & ManageableMetaDataContaini
 class ManagedDocumentsLoader<DOCUMENT: ManageableDocument> {
     typealias LoadedManagedDocument = (document: DOCUMENT, id: String, name: String)
 
-    func loadDocuments(from urls: [URL]) async throws -> [LoadedManagedDocument] {
+    func loadDocuments(from urls: [URL]) async -> [LoadedManagedDocument] {
         return await withTaskGroup(of: Optional<LoadedManagedDocument>.self, returning: [LoadedManagedDocument].self) { taskGroup in
             var results: [LoadedManagedDocument] = []
             
             for url in urls {
                 _ = taskGroup.addTaskUnlessCancelled {
-                    let document = await DOCUMENT(fileURL: url)
-                    await document.open()
+                    guard let document = await Self.coordinatedDocumentOpen(at: url) else { return nil }
                     guard let metaData = document.metaData else { return nil }
+                    
                     await document.close()
                     
                     return (document: document, id: metaData.id, name: metaData.name)
@@ -41,6 +41,30 @@ class ManagedDocumentsLoader<DOCUMENT: ManageableDocument> {
             }
             
             return results
+        }
+    }
+    
+    static func coordinatedDocumentOpen(at fileURL: URL) async -> DOCUMENT? {
+        do {
+            let document: DOCUMENT = try await withCheckedThrowingContinuation { continuation in
+                let coordinator = NSFileCoordinator(filePresenter: nil)
+                var coordinatorError: NSError?
+                
+                coordinator.coordinate(readingItemAt: fileURL, error: &coordinatorError) { [coordinatorError] newURL in
+                    if let coordinatorError {
+                        continuation.resume(throwing: coordinatorError)
+                    }
+                    
+                    let document = DOCUMENT(fileURL: newURL)
+                    document.open()
+                    
+                    continuation.resume(returning: document)
+                }
+            }
+            
+            return document
+        } catch {
+            return nil
         }
     }
 }
@@ -165,11 +189,11 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
             async let addedDocs = docsLoader.loadDocuments(from: docURLs.added)
             async let updatedDocs = docsLoader.loadDocuments(from: docURLs.updated)
             
-            try? await addedDocs.forEach { doc in
+            await addedDocs.forEach { doc in
                 newUUIDMap[doc.id] = doc.document
             }
             
-            try? await updatedDocs.forEach { doc in
+            await updatedDocs.forEach { doc in
                 if let currentDoc = currentMap[doc.id] {
                     (currentDoc as? ResettableDocument)?.resetComposableMap()
                     newUUIDMap[doc.id] = currentDoc
