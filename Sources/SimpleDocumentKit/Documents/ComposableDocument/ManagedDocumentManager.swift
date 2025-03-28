@@ -56,9 +56,12 @@ class ManagedDocumentsLoader<DOCUMENT: ManageableDocument> {
                     }
                     
                     let document = DOCUMENT(fileURL: newURL)
-                    document.open()
-                    
-                    continuation.resume(returning: document)
+                    document.open { didOpen in
+                        if !didOpen {
+                            continuation.resume(throwing: ManagedDocumentManagerError.documentURLInvalid)
+                        }
+                        continuation.resume(returning: document)
+                    }
                 }
             }
             
