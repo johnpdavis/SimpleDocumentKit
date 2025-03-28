@@ -82,7 +82,7 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
         urls = newlyDiscoveredURLs
         urlsReady = true
         
-        let result: DocumentsUpdatedResult = .success((added: Array(newItems), updated: Array(updatedItems), removed: Array(removedItems)))
+        let result: DocumentsUpdatedResult = .success((added: Array(newItems), present: Array(updatedItems), removed: Array(removedItems)))
         
         return result
     }

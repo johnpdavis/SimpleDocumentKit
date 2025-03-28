@@ -111,12 +111,12 @@ public class iCloudDocumentQueryCoordinator: DocumentQueryCoordinator {
         
         let newItems = newURLSet.filter { !currentURLSet.contains($0) }
         let removedItems = currentURLSet.filter { !newURLSet.contains($0) }
-//        let updatedItems = currentURLSet.filter { newURLSet.contains($0) }
+        let presentItems = currentURLSet.filter { newURLSet.contains($0) }
         
         urls = newlyDiscoveredURLs
         urlsReady = true
         
-        let result: DocumentsUpdatedResult = .success((added: Array(newItems), updated: [], removed: Array(removedItems)))
+        let result: DocumentsUpdatedResult = .success((added: Array(newItems), present: Array(presentItems), removed: Array(removedItems)))
         return result
     }
 }

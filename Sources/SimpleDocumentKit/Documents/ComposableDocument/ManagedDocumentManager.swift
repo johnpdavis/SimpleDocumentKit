@@ -19,20 +19,18 @@ enum ManagedDocumentManagerError: Error {
 public typealias ManageableDocument = SmartDocument & ManageableMetaDataContaining
 
 class ManagedDocumentsLoader<DOCUMENT: ManageableDocument> {
-    typealias LoadedManagedDocument = (document: DOCUMENT, id: String, name: String)
-
-    func loadDocuments(from urls: [URL]) async -> [LoadedManagedDocument] {
-        return await withTaskGroup(of: Optional<LoadedManagedDocument>.self, returning: [LoadedManagedDocument].self) { taskGroup in
-            var results: [LoadedManagedDocument] = []
+    func loadDocuments(from urls: [URL]) async -> [DOCUMENT] {
+        return await withTaskGroup(of: DOCUMENT?.self, returning: [DOCUMENT].self) { taskGroup in
+            var results: [DOCUMENT] = []
             
             for url in urls {
                 _ = taskGroup.addTaskUnlessCancelled {
-                    guard let document = await Self.coordinatedDocumentOpen(at: url) else { return nil }
+                    let document = await DOCUMENT(fileURL: url)
+                    await document.open() // await Self.coordinatedDocumentOpen(at: url) else { return nil }
                     guard let metaData = document.metaData else { return nil }
-                    
                     await document.close()
                     
-                    return (document: document, id: metaData.id, name: metaData.name)
+                    return document
                 }
             }
             
@@ -86,9 +84,6 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
     
     private var localDocumentSubscriber: AnyCancellable?
     private var cloudDocumentSubscriber: AnyCancellable?
-    
-    public var localIDToDoc: [String: DOCUMENT] = [:]
-    public var cloudIDToDoc: [String: DOCUMENT] = [:]
     
     @Published public var localDocuments: [DOCUMENT] = []
     @Published public var cloudDocuments: [DOCUMENT] = []
@@ -158,64 +153,45 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
         cloudDocumentManager.scaniCloudOptIn(promptForOptIn: promptForOptIn, completion: completion)
     }
     
-    func processLocalResult(_ result: Result<(added: [URL], updated: [URL], removed: [URL]), Error>) async {
+    func processLocalResult(_ result: DocumentQueryCoordinator.DocumentsUpdatedResult) async {
         do {
-            async let (map, list) = try ManagedDocumentManager.processResult(result, currentMap: localIDToDoc)
-            localIDToDoc = try await map
-            localDocuments = try await list
+            let list = try await ManagedDocumentManager.processResult(result)
+            localDocuments = list
         } catch {
             print("processing failed: \(error)")
         }
     }
     
-    func processCloudResult(_ result: Result<(added: [URL], updated: [URL], removed: [URL]), Error>) async {
+    func processCloudResult(_ result: DocumentQueryCoordinator.DocumentsUpdatedResult) async {
         do {
-            let (map, list) = try await ManagedDocumentManager.processResult(result, currentMap: cloudIDToDoc)
-            cloudIDToDoc = map
+            let list = try await ManagedDocumentManager.processResult(result)
             cloudDocuments = list
         } catch {
             print("processing failed: \(error)")
         }
     }
 
-    static func processResult(_ result: Result<(added: [URL], updated: [URL], removed: [URL]), Error>, currentMap: [String: DOCUMENT]) async throws -> ([String: DOCUMENT], [DOCUMENT]) {
+    static func processResult(_ result: DocumentQueryCoordinator.DocumentsUpdatedResult) async throws -> [DOCUMENT] {
         switch result {
         case .failure(let error):
             print("Received Document Failure: \(error)")
             throw error
         case .success(let docURLs):
-            print("Received Document URLs - \(docURLs.added.count) Added -  \(docURLs.updated.count) updated -  \(docURLs.removed.count) Removed")
-            var newUUIDMap: [String: DOCUMENT] = [:]
+            print("Received Document URLs - \(docURLs.added.count) Added -  \(docURLs.present.count) present -  \(docURLs.removed.count) Removed")
             
             let docsLoader = ManagedDocumentsLoader<DOCUMENT>()
             
-            async let addedDocs = docsLoader.loadDocuments(from: docURLs.added)
-            async let updatedDocs = docsLoader.loadDocuments(from: docURLs.updated)
-            
-            await addedDocs.forEach { doc in
-                newUUIDMap[doc.id] = doc.document
-            }
-            
-            await updatedDocs.forEach { doc in
-                if let currentDoc = currentMap[doc.id] {
-                    (currentDoc as? ResettableDocument)?.resetComposableMap()
-                    newUUIDMap[doc.id] = currentDoc
-                } else {
-                    newUUIDMap[doc.id] = doc.document
-                }
-            }
+            let addedDocs = await docsLoader.loadDocuments(from: docURLs.added)
+            let updatedDocs = await docsLoader.loadDocuments(from: docURLs.present)
         
-            let documents = Array(newUUIDMap.values)
+            let documents = addedDocs + updatedDocs
             let sortedDocuments = documents.sorted {
-                guard let firstName = $0.metaData?.name,
-                      let secondName = $1.metaData?.name else {
-                    return false
-                }
-                
+                let firstName = $0.fileURL.lastPathComponent
+                let secondName = $1.fileURL.lastPathComponent
                 return firstName.localizedCaseInsensitiveCompare(secondName) == .orderedAscending
             }
             
-            return (newUUIDMap, sortedDocuments)
+            return sortedDocuments
         }
     }
     
