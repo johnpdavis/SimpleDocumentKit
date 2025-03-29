@@ -77,14 +77,14 @@ class ComposableDocumentManagerTests: XCTestCase {
         let result = try! manager.localDocumentManager.coordinator.processFiles()
         await manager.processLocalResult(result)
         
-        XCTAssertEqual(manager.localIDToDoc.count, 2)
+        XCTAssertEqual(manager.localDocuments.count, 2)
         
-        let doc1 = manager.localIDToDoc["1"]
-        await doc1?.open()
-        XCTAssertEqual(doc1?.metaData, metaData1)
+        let doc1 = manager.localDocuments[0]
+        await doc1.open()
+        XCTAssertEqual(doc1.metaData, metaData1)
         
-        let doc2 = manager.localIDToDoc["2"]
-        await doc2?.open()
-        XCTAssertEqual(doc2?.metaData, metaData2)
+        let doc2 = manager.localDocuments[1]
+        await doc2.open()
+        XCTAssertEqual(doc2.metaData, metaData2)
     }
 }

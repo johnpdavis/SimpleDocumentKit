@@ -10,6 +10,7 @@
 #if !os(macOS)
 import UIKit
 #endif
+import Combine
 
 /// Error that can be thrown by a SmartDocument Object
 ///
@@ -24,17 +25,16 @@ public enum SmartDocumentError: Error {
     case unableToClose
 }
 
-
-/// Delegate to receive events related to the document's state changing.
-public protocol SmartDocumentDelegate: AnyObject {
-    func smartDocumentEnableEditing(_ doc: SmartDocument)
-    func smartDocumentDisableEditing(_ doc: SmartDocument)
-    func smartDocumentUpdatedContent(_ doc: SmartDocument)
-    func smartDocumentTransferBegan(_ doc: SmartDocument)
-    func smartDocumentTransferEnded(_ doc: SmartDocument)
-    func smartDocumentSaveFailed(_ doc: SmartDocument)
-    func smartDocumentHasConflicts(_ doc: SmartDocument)
-    func smartDocumentDeletedOnOtherDevice(_ doc: SmartDocument)
+public enum SmartDocumentEvent {
+    case editingEnabled
+    case editingDisabled
+    case documentClosed
+    case contentUpdated
+    case transferBegan
+    case transferEnded
+    case saveFailed
+    case conflictsDetected
+    case deletedOnOtherDevice
 }
 
 
@@ -42,7 +42,10 @@ public protocol SmartDocumentDelegate: AnyObject {
 open class SmartDocument: UIDocument {
     
     /// Delegate to receive document state change callbacks
-    public weak var delegate: SmartDocumentDelegate?
+    private let _documentEventSubject = PassthroughSubject<SmartDocumentEvent, Never>()
+    private var documentEventPublisher: any Publisher<SmartDocumentEvent, Never> {
+        _documentEventSubject.eraseToAnyPublisher()
+    }
 
     private var docStateObserver: AnyObject?
     private var transfering: Bool = false
@@ -85,7 +88,7 @@ open class SmartDocument: UIDocument {
         print("Change: \(change)")
 
         if change == .done {
-            delegate?.smartDocumentUpdatedContent(self)
+            _documentEventSubject.send(.contentUpdated)
         }
     }
     
@@ -116,9 +119,9 @@ open class SmartDocument: UIDocument {
     open override func accommodatePresentedItemDeletion() async throws {
         do {
             try await autoSaveAndClose()
-            self.delegate?.smartDocumentDeletedOnOtherDevice(self)
+            _documentEventSubject.send(.deletedOnOtherDevice)
         } catch {
-            self.delegate?.smartDocumentDeletedOnOtherDevice(self)
+            _documentEventSubject.send(.deletedOnOtherDevice)
             throw error
         }
     }
@@ -132,27 +135,27 @@ extension SmartDocument {
         
         if documentState == .normal {
             print("=> Document entered normal state")
-            delegate?.smartDocumentEnableEditing(self)
+            _documentEventSubject.send(.editingEnabled)
         }
         
         if documentState.contains(.closed) && !previousDocumentState.contains(.closed) {
             print("=> Document has closed")
-            delegate?.smartDocumentDisableEditing(self)
+            _documentEventSubject.send(.documentClosed)
         }
         
         if documentState.contains(.editingDisabled) && !previousDocumentState.contains(.editingDisabled) {
             print("=> Document's editing is disabled")
-            delegate?.smartDocumentDisableEditing(self)
+            _documentEventSubject.send(.editingEnabled)
         }
         
         if documentState.contains(.inConflict) && !previousDocumentState.contains(.inConflict) {
             print("=> Document conflicts were detected")
-            delegate?.smartDocumentHasConflicts(self)
+            _documentEventSubject.send(.conflictsDetected)
         }
         
         if documentState.contains(.savingError) && !previousDocumentState.contains(.savingError) {
             print("=> Document has a saving error")
-            delegate?.smartDocumentSaveFailed(self)
+            _documentEventSubject.send(.saveFailed)
         }
         
         handleDocStateForTransfers(documentState)
@@ -166,14 +169,14 @@ extension SmartDocument {
             if !documentState.contains(.progressAvailable) {
                 print("=> A transfer Ended")
                 transfering = false
-                delegate?.smartDocumentTransferEnded(self)
+                _documentEventSubject.send(.transferEnded)
             }
         } else {
             // If we're not in the middle of a transfer, check to see if a transfer has started.
             if documentState.contains(.progressAvailable) {
                 print("=> A transfer is in progress")
                 transfering = true
-                delegate?.smartDocumentTransferBegan(self)
+                _documentEventSubject.send(.transferBegan)
             }
         }
     }
