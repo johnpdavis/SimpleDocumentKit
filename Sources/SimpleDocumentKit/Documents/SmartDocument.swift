@@ -43,7 +43,7 @@ open class SmartDocument: UIDocument {
     
     /// Delegate to receive document state change callbacks
     private let _documentEventSubject = PassthroughSubject<SmartDocumentEvent, Never>()
-    private var documentEventPublisher: any Publisher<SmartDocumentEvent, Never> {
+    public var documentEventPublisher: any Publisher<SmartDocumentEvent, Never> {
         _documentEventSubject.eraseToAnyPublisher()
     }
 
