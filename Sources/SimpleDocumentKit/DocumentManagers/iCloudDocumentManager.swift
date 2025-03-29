@@ -74,15 +74,15 @@ public class CloudDocumentManager: BaseDocumentManager {
                     promptForOptIn()
                 }
                 
-//                // If iCloud newly switched on, move local docs to iCloud
-//                if ICloudDefaults.standard.iCloudOn && !ICloudDefaults.standard.iCloudWasOn {
-//                    self.localToCloud()
-//                }
-//
-//                // If iCloud newly switched off, move iCloud docs to Local
-//                if !ICloudDefaults.standard.iCloudOn && ICloudDefaults.standard.iCloudWasOn {
-//                    self.cloudToLocal()
-//                }
+                // If iCloud newly switched on, move local docs to iCloud
+                if ICloudDefaults.standard.iCloudOn && !ICloudDefaults.standard.iCloudWasOn {
+                    self.moveFilesToiCloud()
+                }
+
+                // If iCloud newly switched off, move iCloud docs to Local
+                if !ICloudDefaults.standard.iCloudOn && ICloudDefaults.standard.iCloudWasOn {
+                    self.moveiCloudToLocal()
+                }
                 
                 // Start querying iCloud for files, whether on or off
                 self.coordinator.startQuery()
