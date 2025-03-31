@@ -266,13 +266,14 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
     }
     
     
-    public func removeDocument(_ document: DOCUMENT) async throws {
+    public nonisolated func removeDocument(_ document: DOCUMENT) async throws {
         try await document.autoSaveAndClose()
+        let fileURL = await document.fileURL
         
         let _: Void = try await withCheckedThrowingContinuation { continuation in
             let coordinator = NSFileCoordinator(filePresenter: document)
             var coordinatorError: NSError?
-            coordinator.coordinate(writingItemAt: document.fileURL, options: .forDeleting, error: &coordinatorError) { [coordinatorError] url in
+            coordinator.coordinate(writingItemAt: fileURL, options: .forDeleting, error: &coordinatorError) { [coordinatorError] url in
                 if let coordinatorError {
                     continuation.resume(throwing: coordinatorError)
                     return
