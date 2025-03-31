@@ -206,7 +206,7 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
     
     func dedupedFileName(basename: String, increment: Int, ext: String) -> String {
         let fullName = if increment > 0 {
-            "\(basename)_\(increment)"
+            "\(basename) \(increment)"
         } else {
             basename
         }
