@@ -119,6 +119,14 @@ open class SmartDocument: UIDocument {
         }
     }
     
+    public func save() async throws {
+        let success = await super.save(to: fileURL, for: .forOverwriting)
+        
+        if !success {
+            throw SmartDocumentError.unableToSave
+        }
+    }
+    
     /// Convenience method to force an autosave and close a document.
     ///
     /// This method will autosave the document and close it if it's open afterward
@@ -128,20 +136,6 @@ open class SmartDocument: UIDocument {
         }
         
         try await safeClose()
-    }
-    
-    /// Convenience method to force an autosave and close a document.
-    ///
-    /// This method will autosave the document and close it if it's open afterward. This forces the save.
-    /// Supporting multiple windows feeding from the same document.
-    /// It then reopens the document.
-    public func autoSaveAndCloseAndOpen() async throws {
-        guard await autosave() else {
-            throw SmartDocumentError.unableToSave
-        }
-        
-        try await safeClose()
-        try await safeOpen()
     }
     
     open override func accommodatePresentedItemDeletion() async throws {
