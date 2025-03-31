@@ -23,6 +23,7 @@ public enum SmartDocumentError: Error {
     case unableToEncodeData
     case unableToSave
     case unableToClose
+    case unableToOpen
 }
 
 public enum SmartDocumentEvent {
@@ -92,6 +93,19 @@ open class SmartDocument: UIDocument {
         }
     }
     
+    /// Convenience method to Open a document.
+    public func safeOpen() async throws {
+        guard !documentState.contains(.normal) else {
+            return
+        }
+        
+        let opened = await self.open()
+        
+        if !opened {
+            throw SmartDocumentError.unableToOpen
+        }
+    }
+    
     /// Convenience method to close a document.
     public func safeClose() async throws {
         guard !documentState.contains(.closed) else {
@@ -114,6 +128,20 @@ open class SmartDocument: UIDocument {
         }
         
         try await safeClose()
+    }
+    
+    /// Convenience method to force an autosave and close a document.
+    ///
+    /// This method will autosave the document and close it if it's open afterward. This forces the save.
+    /// Supporting multiple windows feeding from the same document.
+    /// It then reopens the document.
+    public func autoSaveAndCloseAndOpen() async throws {
+        guard await autosave() else {
+            throw SmartDocumentError.unableToSave
+        }
+        
+        try await safeClose()
+        try await safeOpen()
     }
     
     open override func accommodatePresentedItemDeletion() async throws {
