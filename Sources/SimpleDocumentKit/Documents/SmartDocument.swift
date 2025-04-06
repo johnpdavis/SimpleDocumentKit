@@ -156,27 +156,27 @@ extension SmartDocument {
     func processDocumentState(_ documentState: UIDocument.State) {
         
         if documentState == .normal {
-            print("=> Document entered normal state")
+            print("=> Document entered normal state \(ObjectIdentifier(self))")
             _documentEventSubject.send(.editingEnabled)
         }
         
         if documentState.contains(.closed) && !previousDocumentState.contains(.closed) {
-            print("=> Document has closed")
+            print("=> Document has closed \(ObjectIdentifier(self))")
             _documentEventSubject.send(.documentClosed)
         }
         
         if documentState.contains(.editingDisabled) && !previousDocumentState.contains(.editingDisabled) {
-            print("=> Document's editing is disabled")
+            print("=> Document's editing is disabled \(ObjectIdentifier(self))")
             _documentEventSubject.send(.editingEnabled)
         }
         
         if documentState.contains(.inConflict) && !previousDocumentState.contains(.inConflict) {
-            print("=> Document conflicts were detected")
+            print("=> Document conflicts were detected \(ObjectIdentifier(self))")
             _documentEventSubject.send(.conflictsDetected)
         }
         
         if documentState.contains(.savingError) && !previousDocumentState.contains(.savingError) {
-            print("=> Document has a saving error")
+            print("=> Document has a saving error \(ObjectIdentifier(self))")
             _documentEventSubject.send(.saveFailed)
         }
         
@@ -189,14 +189,14 @@ extension SmartDocument {
         if transfering {
             // If we're in the middle of a transfer, check to see if the transfer has ended.
             if !documentState.contains(.progressAvailable) {
-                print("=> A transfer Ended")
+                print("=> A transfer Ended \(ObjectIdentifier(self))")
                 transfering = false
                 _documentEventSubject.send(.transferEnded)
             }
         } else {
             // If we're not in the middle of a transfer, check to see if a transfer has started.
             if documentState.contains(.progressAvailable) {
-                print("=> A transfer is in progress")
+                print("=> A transfer is in progress \(ObjectIdentifier(self))")
                 transfering = true
                 _documentEventSubject.send(.transferBegan)
             }
