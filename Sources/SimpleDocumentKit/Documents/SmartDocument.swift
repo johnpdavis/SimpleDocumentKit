@@ -119,7 +119,7 @@ open class SmartDocument: UIDocument {
         }
     }
     
-    public nonisolated func save() async throws {
+    open nonisolated func save() async throws {
         let success = await super.save(to: fileURL, for: .forOverwriting)
         
         if !success {
