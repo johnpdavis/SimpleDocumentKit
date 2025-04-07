@@ -154,30 +154,33 @@ open class SmartDocument: UIDocument {
 extension SmartDocument {
     
     func processDocumentState(_ documentState: UIDocument.State) {
-        
         if documentState == .normal {
             print("=> Document entered normal state \(ObjectIdentifier(self))")
             _documentEventSubject.send(.editingEnabled)
-        }
-        
-        if documentState.contains(.closed) && !previousDocumentState.contains(.closed) {
-            print("=> Document has closed \(ObjectIdentifier(self))")
-            _documentEventSubject.send(.documentClosed)
-        }
-        
-        if documentState.contains(.editingDisabled) && !previousDocumentState.contains(.editingDisabled) {
-            print("=> Document's editing is disabled \(ObjectIdentifier(self))")
-            _documentEventSubject.send(.editingEnabled)
-        }
-        
-        if documentState.contains(.inConflict) && !previousDocumentState.contains(.inConflict) {
-            print("=> Document conflicts were detected \(ObjectIdentifier(self))")
-            _documentEventSubject.send(.conflictsDetected)
-        }
-        
-        if documentState.contains(.savingError) && !previousDocumentState.contains(.savingError) {
-            print("=> Document has a saving error \(ObjectIdentifier(self))")
-            _documentEventSubject.send(.saveFailed)
+            
+            Task {
+                await revert(toContentsOf: fileURL)
+            }
+        } else {
+            if documentState.contains(.closed) && !previousDocumentState.contains(.closed) {
+                print("=> Document has closed \(ObjectIdentifier(self))")
+                _documentEventSubject.send(.documentClosed)
+            }
+            
+            if documentState.contains(.editingDisabled) && !previousDocumentState.contains(.editingDisabled) {
+                print("=> Document's editing is disabled \(ObjectIdentifier(self))")
+                _documentEventSubject.send(.editingEnabled)
+            }
+            
+            if documentState.contains(.inConflict) && !previousDocumentState.contains(.inConflict) {
+                print("=> Document conflicts were detected \(ObjectIdentifier(self))")
+                _documentEventSubject.send(.conflictsDetected)
+            }
+            
+            if documentState.contains(.savingError) && !previousDocumentState.contains(.savingError) {
+                print("=> Document has a saving error \(ObjectIdentifier(self))")
+                _documentEventSubject.send(.saveFailed)
+            }
         }
         
         handleDocStateForTransfers(documentState)
