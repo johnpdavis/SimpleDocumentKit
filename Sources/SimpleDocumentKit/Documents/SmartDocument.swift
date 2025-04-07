@@ -56,6 +56,7 @@ open class SmartDocument: UIDocument {
     
     /// To prevent spamming of the document state if it has not changed, we maintain the previous state to compare it to.
     private var previousDocumentState: UIDocument.State = []
+    private var previouslyKnownDocumentModificationDate: Date = Date(timeIntervalSince1970: 0)
     
     public override required init(fileURL url: URL) {
         docStateObserver = nil
@@ -158,7 +159,9 @@ extension SmartDocument {
             print("=> Document entered normal state \(ObjectIdentifier(self))")
             _documentEventSubject.send(.editingEnabled)
             
-            if previousDocumentState == .editingDisabled {
+            if let newDocumentModificationDate = fileModificationDate,
+                previousDocumentState == .editingDisabled,
+                previouslyKnownDocumentModificationDate < newDocumentModificationDate  {
                 Task {
                     await revert(toContentsOf: fileURL)
                 }
@@ -188,6 +191,7 @@ extension SmartDocument {
         handleDocStateForTransfers(documentState)
         
         previousDocumentState = documentState
+        previouslyKnownDocumentModificationDate = fileModificationDate ?? Date(timeIntervalSince1970: 0)
     }
     
     func handleDocStateForTransfers(_ documentState: UIDocument.State) {
