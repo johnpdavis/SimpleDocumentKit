@@ -157,10 +157,6 @@ extension SmartDocument {
         if documentState == .normal {
             print("=> Document entered normal state \(ObjectIdentifier(self))")
             _documentEventSubject.send(.editingEnabled)
-            
-            Task {
-                await revert(toContentsOf: fileURL)
-            }
         } else {
             if documentState.contains(.closed) && !previousDocumentState.contains(.closed) {
                 print("=> Document has closed \(ObjectIdentifier(self))")
