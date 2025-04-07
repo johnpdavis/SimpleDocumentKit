@@ -71,7 +71,7 @@ open class SmartDocument: UIDocument {
         }
     }
     
-    func updatePreviouslyKnownDocumentModificationDate() {
+    public func updatePreviouslyKnownDocumentModificationDate() {
         previouslyKnownDocumentModificationDate = (try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? Date(timeIntervalSince1970: 0)
     }
     
