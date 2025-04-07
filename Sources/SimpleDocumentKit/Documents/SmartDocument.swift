@@ -160,8 +160,8 @@ extension SmartDocument {
             _documentEventSubject.send(.editingEnabled)
             
             if let newDocumentModificationDate = fileModificationDate,
-                previousDocumentState == .editingDisabled,
-                previouslyKnownDocumentModificationDate < newDocumentModificationDate  {
+               previousDocumentState.contains(.editingDisabled),
+               previouslyKnownDocumentModificationDate < newDocumentModificationDate  {
                 Task {
                     await revert(toContentsOf: fileURL)
                 }
