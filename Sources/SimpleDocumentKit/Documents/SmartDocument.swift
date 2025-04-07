@@ -71,6 +71,10 @@ open class SmartDocument: UIDocument {
         }
     }
     
+    func updatePreviouslyKnownDocumentModificationDate() {
+        previouslyKnownDocumentModificationDate = (try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? Date(timeIntervalSince1970: 0)
+    }
+    
     deinit {
         if let docObserver = docStateObserver {
             NotificationCenter.default.removeObserver(docObserver)
@@ -163,6 +167,7 @@ extension SmartDocument {
                previousDocumentState.contains(.editingDisabled),
                previouslyKnownDocumentModificationDate < newDocumentModificationDate  {
                 Task {
+                    previouslyKnownDocumentModificationDate = newDocumentModificationDate
                     await revert(toContentsOf: fileURL)
                 }
             }
@@ -191,7 +196,6 @@ extension SmartDocument {
         handleDocStateForTransfers(documentState)
         
         previousDocumentState = documentState
-        previouslyKnownDocumentModificationDate = fileModificationDate ?? Date(timeIntervalSince1970: 0)
     }
     
     func handleDocStateForTransfers(_ documentState: UIDocument.State) {
