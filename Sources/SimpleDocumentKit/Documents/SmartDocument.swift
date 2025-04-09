@@ -81,6 +81,16 @@ open class SmartDocument: UIDocument {
         }
     }
     
+    
+    /// Subclasses should call this method after performing a successful load operation to update the previously known document modification date for the data.
+    /// This method does nothing else
+    /// - Parameters:
+    ///   - contents: document contents. Unused by this implementaiton
+    ///   - typeName: type of document contents. Unused by this implementation
+    open override func load(fromContents contents: Any, ofType typeName: String?) throws {
+        updatePreviouslyKnownDocumentModificationDate()
+    }
+    
     // MARK: - Lifecycle
     
     /// Update the change counter by indicating the kind of change.
