@@ -48,7 +48,7 @@ open class SmartDocument: UIDocument {
         _documentEventSubject.eraseToAnyPublisher()
     }
 
-    private var docStateObserver: AnyObject?
+    private var cancellables = Set<AnyCancellable>()
     private var transfering: Bool = false
     
     /// Transfer progress of Document
@@ -59,28 +59,24 @@ open class SmartDocument: UIDocument {
     private var previouslyKnownDocumentModificationDate: Date = Date(timeIntervalSince1970: 0)
     
     public override required init(fileURL url: URL) {
-        docStateObserver = nil
         super.init(fileURL: url)
         
-        docStateObserver = NotificationCenter.default.addObserver(forName: UIDocument.stateChangedNotification, object: self, queue: OperationQueue.main) { [weak self] _ in
+        NotificationCenter.default.publisher(for: UIDocument.stateChangedNotification)
+            .receive(on: OperationQueue.main)
+            .sink { [weak self] _ in
                 guard let self = self else {
                     return
                 }
                 
                 self.processDocumentState(self.documentState)
-        }
+                
+            }
+            .store(in: &cancellables)
     }
     
     public func updatePreviouslyKnownDocumentModificationDate() {
         previouslyKnownDocumentModificationDate = (try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? Date(timeIntervalSince1970: 0)
     }
-    
-    deinit {
-        if let docObserver = docStateObserver {
-            NotificationCenter.default.removeObserver(docObserver)
-        }
-    }
-    
     
     /// Subclasses should call this method after performing a successful load operation to update the previously known document modification date for the data.
     /// This method does nothing else
