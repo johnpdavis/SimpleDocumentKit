@@ -38,7 +38,7 @@ public class CloudDocumentManager: BaseDocumentManager {
     
     public func initializeiCloudAccess(completion:@escaping ((Bool, URL?) -> Void)) {
         DispatchQueue.global(qos: .default).async {
-            if let url = FileManager.default.url(forUbiquityContainerIdentifier: nil) {
+            if let url = FileManager.default.url(forUbiquityContainerIdentifier: self.ubiquityContainerIdentifier) {
                 self.iCloudRootURL = url
                 DispatchQueue.main.async {
                     completion(true, url)
