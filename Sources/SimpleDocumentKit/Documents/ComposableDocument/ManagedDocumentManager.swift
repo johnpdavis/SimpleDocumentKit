@@ -123,10 +123,8 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
             .debounce(for: 0.2, scheduler: DispatchQueue.main)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] result in
-                Task { [weak self] in
-                    print("Received Cloud result: \(result)")
-                    await self?.processCloudResult(result)
-                }
+                print("Received Cloud result: \(result)")
+                self?.processCloudResult(result)
             }
         
         cloudDocumentManager.startQueryingDocuments()
@@ -137,10 +135,8 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
             .debounce(for: 0.2, scheduler: DispatchQueue.main)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] result in
-                Task { [weak self] in
-                    print("Received Local result: \(result)")
-                    await self?.processLocalResult(result)
-                }
+                print("Received Local result: \(result)")
+                self?.processLocalResult(result)
             }
         
         localDocumentManager.startQueryingDocuments()
