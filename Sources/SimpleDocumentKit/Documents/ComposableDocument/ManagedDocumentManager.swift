@@ -150,25 +150,25 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
         cloudDocumentManager.scaniCloudOptIn(promptForOptIn: promptForOptIn, completion: completion)
     }
     
-    func processLocalResult(_ result: DocumentQueryCoordinator.DocumentsUpdatedResult) async {
+    func processLocalResult(_ result: DocumentQueryCoordinator.DocumentsUpdatedResult) {
         do {
-            let list = try await ManagedDocumentManager.processResult(result)
+            let list = try ManagedDocumentManager.processResult(result, currentResults: localDocuments)
             localDocuments = list
         } catch {
             print("processing failed: \(error)")
         }
     }
     
-    func processCloudResult(_ result: DocumentQueryCoordinator.DocumentsUpdatedResult) async {
+    func processCloudResult(_ result: DocumentQueryCoordinator.DocumentsUpdatedResult) {
         do {
-            let list = try await ManagedDocumentManager.processResult(result)
+            let list = try ManagedDocumentManager.processResult(result, currentResults: cloudDocuments)
             cloudDocuments = list
         } catch {
             print("processing failed: \(error)")
         }
     }
 
-    static func processResult(_ result: DocumentQueryCoordinator.DocumentsUpdatedResult) async throws -> [DOCUMENT] {
+    static func processResult(_ result: DocumentQueryCoordinator.DocumentsUpdatedResult, currentResults: [DOCUMENT]) throws -> [DOCUMENT] {
         switch result {
         case .failure(let error):
             print("Received Document Failure: \(error)")
@@ -176,12 +176,29 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
         case .success(let docURLs):
             print("Received Document URLs - \(docURLs.added.count) Added -  \(docURLs.present.count) present -  \(docURLs.removed.count) Removed")
             
-            let docsLoader = ManagedDocumentsLoader<DOCUMENT>()
+            // Initialed with currently known state
+            var newURLsToDocs:[URL: DOCUMENT] = currentResults.reduce(into: [:]) { result, new in
+                result[new.fileURL] = new
+            }
             
-            let addedDocs = await docsLoader.loadDocuments(from: docURLs.added)
-            let updatedDocs = await docsLoader.loadDocuments(from: docURLs.present)
-        
-            let documents = addedDocs + updatedDocs
+            // Remove the removed docs from the current dictionary
+            docURLs.removed.forEach { newURLsToDocs.removeValue(forKey: $0) }
+            
+            // Add the added URLS if they are not present
+            docURLs.added.forEach { addedURL in
+                if newURLsToDocs[addedURL] == nil {
+                    newURLsToDocs[addedURL] = DOCUMENT(fileURL: addedURL)
+                }
+            }
+            
+            // Add the present URLs if they are not already present
+            docURLs.present.forEach { presentURL in
+                if newURLsToDocs[presentURL] == nil {
+                    newURLsToDocs[presentURL] = DOCUMENT(fileURL: presentURL)
+                }
+            }
+            
+            let documents = Array(newURLsToDocs.values)
             let sortedDocuments = documents.sorted {
                 let firstName = $0.fileURL.lastPathComponent
                 let secondName = $1.fileURL.lastPathComponent
