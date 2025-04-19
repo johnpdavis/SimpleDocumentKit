@@ -313,4 +313,17 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
         
         return FileManager.default.fileExists(atPath:fullFileURL.path)
     }
+    
+    public func documentForURL(_ url: URL) -> DOCUMENT? {
+        // Initialed with currently known state
+        let localDocs:[URL: DOCUMENT] = localDocuments.reduce(into: [:]) { result, new in
+            result[new.fileURL] = new
+        }
+        
+        let cloudDocs:[URL: DOCUMENT] = cloudDocuments.reduce(into: [:]) { result, new in
+            result[new.fileURL] = new
+        }
+        
+        return localDocs[url] ?? cloudDocs[url]
+    }
 }
