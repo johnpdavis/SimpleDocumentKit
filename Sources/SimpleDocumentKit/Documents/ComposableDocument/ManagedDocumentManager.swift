@@ -232,7 +232,7 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
     /// - Parameters:
     ///   - name: Name of package with extension
     public func createDocument(fileName_base: String, metaData: DOCUMENT.METADATA) async throws -> DOCUMENT {
-        var baseNameIncrement: Int = 1
+        var baseNameIncrement: Int = 0
         var newDocumentName: String!
         while newDocumentName == nil {
             let newName = dedupedFileName(basename: fileName_base, increment: baseNameIncrement, ext: managedDocumentExtension)
