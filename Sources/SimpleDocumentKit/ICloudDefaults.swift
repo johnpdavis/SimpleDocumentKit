@@ -8,6 +8,7 @@
 
 import Foundation
 
+@MainActor
 public struct ICloudDefaults {
     /// Standard iCloudDefaults that returns an instance wrapping `UserDefaults`
     public static var `standard` = ICloudDefaults()

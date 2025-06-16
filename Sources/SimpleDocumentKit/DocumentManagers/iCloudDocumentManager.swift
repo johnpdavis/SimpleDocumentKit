@@ -9,6 +9,7 @@
 import Combine
 import Foundation
 
+@MainActor
 public class CloudDocumentManager: BaseDocumentManager {
     
     // MARK: Properties
@@ -36,44 +37,42 @@ public class CloudDocumentManager: BaseDocumentManager {
         return rootURL.appendingPathComponent("Documents").appendingPathComponent(filename)
     }
     
-    public func initializeiCloudAccess(completion:@escaping ((Bool, URL?) -> Void)) {
-        DispatchQueue.global(qos: .default).async {
-            if let url = FileManager.default.url(forUbiquityContainerIdentifier: nil) {
+    public func initializeiCloudAccess() async -> (Bool, URL?) {
+        if let url = FileManager.default.url(forUbiquityContainerIdentifier: nil) {
+            await MainActor.run {
                 self.iCloudRootURL = url
-                DispatchQueue.main.async {
-                    completion(true, url)
-                }
-            } else {
-                DispatchQueue.main.async {
-                    completion(false, nil)
-                }
             }
+            
+            return (true, url)
+        } else {
+            return (false, nil)
         }
     }
     
-    public func scaniCloudOptIn(promptForOptIn:@escaping (() -> ()), completion: @escaping (() -> Void)) {
-        initializeiCloudAccess(completion: { iCloudAvailable, _ in
-            if !iCloudAvailable {
-                print("iCloud is not available")
-                // If iCloud isn't available, set promoted to no (so we can ask them next time it becomes available)
-                ICloudDefaults.standard.iCloudPrompted = false
+    public func scaniCloudOptIn(promptForOptIn: @escaping (() -> ())) async {
+        let (iCloudAvailable, url) = await initializeiCloudAccess()
+        
+        if !iCloudAvailable {
+            print("iCloud is not available")
+            // If iCloud isn't available, set promoted to no (so we can ask them next time it becomes available)
+            ICloudDefaults.standard.iCloudPrompted = false
+            
+            // If iCloud was toggled on previously, warn user that the docs will be loaded locally and data may be lost
+            if ICloudDefaults.standard.iCloudWasOn {
+                print("DATA WAS PROBABLY LOST")
+            }
+            
+            // No matter what, iCloud isn't available so switch it to off.
+            ICloudDefaults.standard.iCloudWasOn = false
+            ICloudDefaults.standard.iCloudOn = false
+        } else {
+            // Ask user if want to turn on iCloud if it's available and we haven't asked already
+            if !ICloudDefaults.standard.iCloudOn && !ICloudDefaults.standard.iCloudPrompted {
+                ICloudDefaults.standard.iCloudPrompted = true
                 
-                // If iCloud was toggled on previously, warn user that the docs will be loaded locally and data may be lost
-                if ICloudDefaults.standard.iCloudWasOn {
-                    print("DATA WAS PROBABLY LOST")
-                }
-                
-                // No matter what, iCloud isn't available so switch it to off.
-                ICloudDefaults.standard.iCloudWasOn = false
-                ICloudDefaults.standard.iCloudOn = false
-            } else {
-                // Ask user if want to turn on iCloud if it's available and we haven't asked already
-                if !ICloudDefaults.standard.iCloudOn && !ICloudDefaults.standard.iCloudPrompted {
-                    ICloudDefaults.standard.iCloudPrompted = true
-                    
-                    promptForOptIn()
-                }
-                
+                promptForOptIn()
+            }
+            
 //                // If iCloud newly switched on, move local docs to iCloud
 //                if ICloudDefaults.standard.iCloudOn && !ICloudDefaults.standard.iCloudWasOn {
 //                    self.localToCloud()
@@ -83,16 +82,13 @@ public class CloudDocumentManager: BaseDocumentManager {
 //                if !ICloudDefaults.standard.iCloudOn && ICloudDefaults.standard.iCloudWasOn {
 //                    self.cloudToLocal()
 //                }
-                
-                // Start querying iCloud for files, whether on or off
-                self.coordinator.startQuery()
-                
-                // No matter what, refresh with current value of iCloudOn
-                ICloudDefaults.standard.iCloudWasOn = ICloudDefaults.standard.iCloudOn
-            }
             
-            completion()
-        })
+            // Start querying iCloud for files, whether on or off
+            self.coordinator.startQuery()
+            
+            // No matter what, refresh with current value of iCloudOn
+            ICloudDefaults.standard.iCloudWasOn = ICloudDefaults.standard.iCloudOn
+        }
     }
     
     func moveFilesToiCloud() {

@@ -7,6 +7,7 @@
 // Includes functionality from Apple's DocumentBrowser document sample application.
 //
 
+import Combine
 #if !os(macOS)
 import UIKit
 #endif
@@ -26,7 +27,7 @@ public enum SmartDocumentError: Error {
 
 
 /// Delegate to receive events related to the document's state changing.
-public protocol SmartDocumentDelegate: class {
+public protocol SmartDocumentDelegate: AnyObject {
     func smartDocumentEnableEditing(_ doc: SmartDocument)
     func smartDocumentDisableEditing(_ doc: SmartDocument)
     func smartDocumentUpdatedContent(_ doc: SmartDocument)
@@ -37,14 +38,12 @@ public protocol SmartDocumentDelegate: class {
     func smartDocumentDeletedOnOtherDevice(_ doc: SmartDocument)
 }
 
-
 /// Smart document registers for its parents document change events, and delegates these events via a `SmartDocumentDelegate`.
 open class SmartDocument: UIDocument {
     
     /// Delegate to receive document state change callbacks
     public weak var delegate: SmartDocumentDelegate?
 
-    private var docStateObserver: AnyObject?
     private var transfering: Bool = false
     
     /// Transfer progress of Document
@@ -53,23 +52,20 @@ open class SmartDocument: UIDocument {
     /// To prevent spamming of the document state if it has not changed, we maintain the previous state to compare it to.
     private var previousDocumentState: UIDocument.State = []
     
+    private var cancellables = Set<AnyCancellable>()
+    
     public override init(fileURL url: URL) {
-        docStateObserver = nil
         super.init(fileURL: url)
         
-        docStateObserver = NotificationCenter.default.addObserver(forName: UIDocument.stateChangedNotification, object: self, queue: OperationQueue.main) { [weak self] _ in
-                guard let self = self else {
-                    return
+        NotificationCenter.default
+            .publisher(for: UIDocument.stateChangedNotification)
+            .receive(on: OperationQueue.main)
+            .sink(receiveValue: { _ in
+                Task { @MainActor in
+                    self.processDocumentState(self.documentState)
                 }
-                
-                self.processDocumentState(self.documentState)
-        }
-    }
-    
-    deinit {
-        if let docObserver = docStateObserver {
-            NotificationCenter.default.removeObserver(docObserver)
-        }
+            })
+            .store(in: &cancellables)
     }
     
     // MARK: - Lifecycle
@@ -90,42 +86,37 @@ open class SmartDocument: UIDocument {
     }
     
     /// Convenience method to close a document.
-    public func safeClose(completion: ((Error?) -> Void)? = nil) {
+    public func safeClose() async throws {
         if !self.documentState.contains(.closed) {
-            self.close { closeSuccess in
-                if closeSuccess {
-                    completion?(nil)
-                }
-                else {
-                    completion?(SmartDocumentError.unableToClose)
-                }
+            let closeSuccess = await self.close()
+            
+            if closeSuccess {
+                return
+            }
+            else {
+                throw SmartDocumentError.unableToClose
             }
         } else {
-            completion?(nil)
+            return
         }
     }
     
     /// Convenience method to force an autosave and close a document.
     ///
     /// This method will autosave the document and close it if it's open afterward
-    /// - Parameter completionHandler: Completion closure to be invoked upon the autosave and close completion
-    public func autoSaveAndClose(completion: ((Error?) -> Void)? = nil) {
-        autosave { autosaveSuccess in
-            if autosaveSuccess {
-                self.safeClose(completion: completion)
-            } else {
-                completion?(SmartDocumentError.unableToSave)
-            }
+    public func autoSaveAndClose() async throws {
+        let autosaveSuccess = await autosave()
+        if autosaveSuccess {
+            try await self.safeClose()
+        } else {
+            throw SmartDocumentError.unableToSave
         }
     }
     
     /// Upon being informed that our file will be deleted by a file coordinator, we need to force an autosave so the autosave engine doesnt re-write the file after its been removed.
-    public override func accommodatePresentedItemDeletion(completionHandler: @escaping (Error?) -> Void) {
-        self.autoSaveAndClose(completion: { [weak self] error in
-            completionHandler(error)
-            
-            self.flatMap{ $0.delegate?.smartDocumentDeletedOnOtherDevice($0)}
-        })
+    open override func accommodatePresentedItemDeletion() async throws {
+        try await autoSaveAndClose()
+        delegate?.smartDocumentDeletedOnOtherDevice(self)
     }
 }
 

@@ -11,10 +11,6 @@ import Foundation
 import UIKit
 #endif
 
-extension FileManager {
-    
-}
-
 // MARK: - Coordinated Document Removal
 // Note: These methods could be static but are not. This is to support FileManager's delegate being invoked for the wrapped FileManager calls like `removeFile` if the developer chose to use a non-default FileManager
 extension FileManager {
@@ -24,20 +20,22 @@ extension FileManager {
     /// - Parameters:
     ///   - document: Document to optionally close and attempt to delete
     ///   - completion: Completion handler to be invoked with the results of the close and removal.
-    public func removeDocument(_ document: UIDocument, completion:((Bool) -> Void)?) {
-        print("removeDocument - State: \(document.documentStateString)")
-        if !document.documentState.contains(.closed) {
-            document.close { [weak self] success in
-                guard let self = self else { return }
-                
-                if success {
-                    self.removeFile(at: document.fileURL, completion: completion)
-                } else {
-                    completion?(false)
-                }
+    nonisolated
+    public func removeDocument(_ document: UIDocument) async -> Bool {
+        let isClosed = await MainActor.run {
+            print("removeDocument - State: \(document.documentStateString)")
+            return document.documentState.contains(.closed)
+        }
+        
+        if !isClosed {
+            let success = await document.close()
+            if success {
+                return await removeFile(at: document.fileURL)
+            } else {
+                return false
             }
         } else {
-            removeFile(at: document.fileURL, completion: completion)
+            return await removeFile(at: document.fileURL)
         }
     }
     
@@ -47,28 +45,27 @@ extension FileManager {
     /// - Parameters:
     ///   - URL: URL of file to attempt removal of
     ///   - completion: Completion block to be invoked after removal completes or fails. Will be invoked on main queue.
-    func removeFile(at URL: URL, completion:((Bool) -> Void)?) {
-        func coordinateRemovalOfFile(URL: URL, completion: (Bool) -> Void) {
-            let coordinator = NSFileCoordinator(filePresenter: nil)
-            coordinator.coordinate(writingItemAt: URL, options: .forDeleting, error: nil) { URL in
-                print("Attempting to delete file at: \(URL)")
-                do {
-                    try FileManager.default.removeItem(at: URL)
-                    completion(true)
-                } catch {
-                    print("Failed to remove file: \(error.localizedDescription)")
-                    completion(false)
+    @concurrent
+    func removeFile(at URL: URL) async -> Bool {
+        
+        @concurrent
+        func coordinateRemovalOfFile(URL: URL) async -> Bool {
+            return await withCheckedContinuation { continuation in
+                let coordinator = NSFileCoordinator(filePresenter: nil)
+                coordinator.coordinate(writingItemAt: URL, options: .forDeleting, error: nil) { URL in
+                    print("Attempting to delete file at: \(URL)")
+                    do {
+                        try FileManager.default.removeItem(at: URL)
+                        continuation.resume(returning: true)
+                    } catch {
+                        print("Failed to remove file: \(error.localizedDescription)")
+                        continuation.resume(returning: false)
+                    }
                 }
             }
         }
         
-        DispatchQueue.global(qos: .default).async {
-            coordinateRemovalOfFile(URL: URL) { success in
-                DispatchQueue.main.async {
-                    completion?(success)
-                }
-            }
-        }
+        return await coordinateRemovalOfFile(URL: URL)
     }
 }
 
@@ -81,39 +78,35 @@ extension FileManager {
     ///   - currentURL: Current location of file to move
     ///   - newURL: New location to move file to
     ///   - completion: Completion block to invoke when file move is complete. Will be invoked on the main thread.
-    public func moveUbiquitousItem(at currentURL: URL, to newURL: URL, completion: ((Bool) -> Void)?) {
+    public func moveUbiquitousItem(at currentURL: URL, to newURL: URL) async -> Bool {
         
-        func coordinateMoveFile(at currentURL: URL, to newURL: URL, completion: (Bool) -> Void) {
-            var error: NSError? = nil
-            let coordinator = NSFileCoordinator(filePresenter: nil)
-            
-            coordinator.coordinate(writingItemAt: currentURL, options: .forMoving, writingItemAt: newURL, options: .forReplacing, error: &error) { [weak self, error] currentURL, newURL in
-                guard let self = self else { return }
-                if let error = error {
-                    print("Error with coordinator: \(error)")
-                    completion(false)
-                    return
-                }
+        func coordinateMoveFile(at currentURL: URL, to newURL: URL) async -> Bool {
+            return await withCheckedContinuation { continuation in
+                var error: NSError? = nil
+                let coordinator = NSFileCoordinator(filePresenter: nil)
                 
-                do {
-                    coordinator.item(at: currentURL, willMoveTo: newURL)
-                    try self.moveItem(at: currentURL, to: newURL)
-                    coordinator.item(at: currentURL, didMoveTo: newURL)
-                    completion(true)
-                } catch {
-                    print("Failed to move file: \(error.localizedDescription)")
-                    completion(false)
+                coordinator.coordinate(writingItemAt: currentURL, options: .forMoving, writingItemAt: newURL, options: .forReplacing, error: &error) { [weak self, error] currentURL, newURL in
+                    guard let self = self else { return }
+                    if let error = error {
+                        print("Error with coordinator: \(error)")
+                        continuation.resume(returning: false)
+                        return
+                    }
+                    
+                    do {
+                        coordinator.item(at: currentURL, willMoveTo: newURL)
+                        try self.moveItem(at: currentURL, to: newURL)
+                        coordinator.item(at: currentURL, didMoveTo: newURL)
+                        continuation.resume(returning: true)
+                    } catch {
+                        print("Failed to move file: \(error.localizedDescription)")
+                        continuation.resume(returning: false)
+                    }
                 }
             }
         }
         
-        DispatchQueue.global(qos: .default).async {
-            coordinateMoveFile(at: currentURL, to: newURL) { success in
-                DispatchQueue.main.async {
-                    completion?(success)
-                }
-            }
-        }
+        return await coordinateMoveFile(at: currentURL, to: newURL)
     }
 }
 

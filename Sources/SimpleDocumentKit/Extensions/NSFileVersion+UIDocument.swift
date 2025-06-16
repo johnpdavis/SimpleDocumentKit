@@ -11,6 +11,7 @@ import Foundation
 import UIKit
 #endif
 
+@MainActor
 extension NSFileVersion {
     /// Choose a version of a UIDocument and discard the others.
     ///
@@ -43,10 +44,11 @@ extension NSFileVersion {
                 try version.replaceItem(at: document.fileURL, options: [])
                 try NSFileVersion.removeOtherVersionsOfItem(at: document.fileURL)
                 document.revert(toContentsOf: document.fileURL, completionHandler: { success in
-                    if success {
-                        NSFileVersion.unresolvedConflictVersionsOfItem(at: document.fileURL)?.forEach { $0.isResolved = true }
-                    }
-                    DispatchQueue.main.async {
+                    Task { @MainActor in
+                        if success {
+                            NSFileVersion.unresolvedConflictVersionsOfItem(at: document.fileURL)?.forEach { $0.isResolved = true }
+                        }
+                        
                         completion?(success)
                     }
                 })

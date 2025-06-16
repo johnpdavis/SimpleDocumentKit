@@ -8,7 +8,7 @@ final class SimpleDocumentKitTests: XCTestCase {
         // results.
     }
 
-    static var allTests = [
+    static let allTests = [
         ("testExample", testExample),
     ]
 }
