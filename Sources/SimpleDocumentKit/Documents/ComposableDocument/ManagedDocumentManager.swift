@@ -50,8 +50,9 @@ class ManagedDocumentsLoader<DOCUMENT: ManageableDocument> {
                         continuation.resume(throwing: coordinatorError)
                     }
                     
-                    let document = DOCUMENT(fileURL: newURL)
-                    document.open { didOpen in
+                    Task { @MainActor in
+                        let document = DOCUMENT(fileURL: newURL)
+                        let didOpen = await document.open()
                         if !didOpen {
                             continuation.resume(throwing: ManagedDocumentManagerError.documentURLInvalid)
                         }
@@ -111,8 +112,9 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
             initializeCloudDocManager()
         }
         
-        if initializeiCloudAccess {
-            cloudDocumentManager.initializeiCloudAccess { success, containerURL in
+        Task {
+            if initializeiCloudAccess {
+                let (success, containerURL) = await cloudDocumentManager.initializeiCloudAccess()
                 print("\(success) - \(String(describing: containerURL))")
             }
         }
@@ -142,8 +144,8 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
         localDocumentManager.startQueryingDocuments()
     }
     
-    public func scaniCloudOptIn(promptForOptIn:@escaping (() -> ()), completion: @escaping (() -> Void)) {
-        cloudDocumentManager.scaniCloudOptIn(promptForOptIn: promptForOptIn, completion: completion)
+    public func scaniCloudOptIn(promptForOptIn:@escaping (() -> ())) async {
+        await cloudDocumentManager.scaniCloudOptIn(promptForOptIn: promptForOptIn)
     }
     
     func processLocalResult(_ result: DocumentQueryCoordinator.DocumentsUpdatedResult) {

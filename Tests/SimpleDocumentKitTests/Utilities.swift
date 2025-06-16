@@ -48,6 +48,7 @@ enum Utilities {
         let originalsFolderItem: FolderMapItem
     }
     
+    @MainActor
     static func makeComposedTestDocument(at url: URL) -> DocumentResultBundle {
         let composableDoc = ComposableDocument(fileURL: url)
         

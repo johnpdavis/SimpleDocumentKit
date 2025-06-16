@@ -10,7 +10,8 @@ import XCTest
 
 extension MockMetaData: ManageableDocumentMetaData { }
 
-class MockComposableDocument: ComposableDocument, ManageableMetaDataContaining {
+@MainActor
+class MockComposableDocument: ComposableDocument, @MainActor ManageableMetaDataContaining {
     typealias METADATA = MockMetaData
     
     let metaDataItem = CodableFileMapItem<MockMetaData>(filename: "metaData.json")

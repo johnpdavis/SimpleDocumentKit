@@ -11,6 +11,7 @@ import Foundation
 import UIKit
 #endif
 
+@MainActor
 extension NSFileVersion {
     /// Choose a version of a UIDocument and discard the others.
     ///
@@ -18,8 +19,11 @@ extension NSFileVersion {
     ///   - version: Chosen version
     ///   - document: UIDocument to have version chosen for
     ///   - completion: Completion block to be invoked when choice is finished processing. Will be invoked on main queue
-    public static func chooseVersion(_ version: NSFileVersion, ofConflictedDocument document: UIDocument, completion:((Bool) -> Void)?) {
-        guard document.documentState.contains(.inConflict) else { return }
+    public static func chooseVersion(_ version: NSFileVersion, ofConflictedDocument document: UIDocument) async -> Bool {
+        guard document.documentState.contains(.inConflict) else {
+            print("document not in conflict")
+            return false
+        }
         
         let currentVersion = NSFileVersion.currentVersionOfItem(at: document.fileURL)
         
@@ -28,33 +32,26 @@ extension NSFileVersion {
             do {
                 try NSFileVersion.removeOtherVersionsOfItem(at: document.fileURL)
                 NSFileVersion.unresolvedConflictVersionsOfItem(at: document.fileURL)?.forEach { $0.isResolved = true }
-                DispatchQueue.main.async {
-                    completion?(true)
-                }
+                return true
             } catch {
                 print("Unable to remove other versions of document.")
-                DispatchQueue.main.async {
-                    completion?(false)
-                }
+                return false
             }
         } else {
             // keep a different version than current
             do {
                 try version.replaceItem(at: document.fileURL, options: [])
                 try NSFileVersion.removeOtherVersionsOfItem(at: document.fileURL)
-                document.revert(toContentsOf: document.fileURL, completionHandler: { success in
-                    if success {
-                        NSFileVersion.unresolvedConflictVersionsOfItem(at: document.fileURL)?.forEach { $0.isResolved = true }
-                    }
-                    DispatchQueue.main.async {
-                        completion?(success)
-                    }
-                })
+                let success = await document.revert(toContentsOf: document.fileURL)
+                
+                if success {
+                    NSFileVersion.unresolvedConflictVersionsOfItem(at: document.fileURL)?.forEach { $0.isResolved = true }
+                }
+                
+                return success
             } catch {
                 print("Unable to replace document with version.")
-                DispatchQueue.main.async {
-                    completion?(false)
-                }
+                return false
             }
         }
     }
