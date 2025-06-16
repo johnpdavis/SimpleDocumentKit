@@ -2,6 +2,7 @@
 //  Created by John Davis on 11/22/20.
 //
 
+#if !os(macOS)
 import UIKit
 import Combine
 
@@ -30,28 +31,19 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
     }
     
     public func startQuery() {
-        do {
-            print("Starting to watch: \(searchScope)")
-            try processFiles()
-            startSubscriberPipeline()
-        } catch {
-            assertionFailure("Caught error while processing directory:\(error)")
-            startSubscriberPipeline()
-        }
+        print("Starting to watch: \(searchScope)")
+        processFilesAndSend()
+        startSubscriberPipeline()
     }
-    
+
     func startSubscriberPipeline() {
         dispatchObserverCancelable = dispatchObserver.changeObservedSubject
             .eraseToAnyPublisher()
             .debounce(for: 0.2, scheduler: DispatchQueue.main)
             .sink(receiveValue: { [weak self] _ in
-                do {
-                    self?.stopQuery()
-                    try self?.processFiles()
-                    self?.startSubscriberPipeline()
-                } catch {
-                    assertionFailure("Caught error while processing directory:\(error)")
-                }
+                self?.stopQuery()
+                self?.processFilesAndSend()
+                self?.startSubscriberPipeline()
             })
     }
     
@@ -61,7 +53,17 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
         dispatchObserverCancelable = nil
     }
     
-    public func processFiles() throws {
+    public func processFilesAndSend() {
+        do {
+            let result = try processFiles()
+            print("SENDING")
+            documentsUpdatedSubject.send(result)
+        } catch {
+            assertionFailure("Caught error attempting to process files: \(error)")
+        }
+    }
+    
+    public func processFiles() throws -> DocumentsUpdatedResult {
         let newlyDiscoveredURLs = try FileManager.default.contentsOfDirectory(at: searchScope, includingPropertiesForKeys: [.nameKey],
                                                                               options: [.skipsPackageDescendants,
                                                                                         .skipsHiddenFiles])
@@ -80,7 +82,9 @@ public class LocalDocumentQueryCoordinator: DocumentQueryCoordinator {
         urls = newlyDiscoveredURLs
         urlsReady = true
         
-        let result: DocumentsUpdatedResult = .success((added: Array(newItems), updated: Array(updatedItems), removed: Array(removedItems)))
-        documentsUpdatedSubject.send(result)
+        let result: DocumentsUpdatedResult = .success((added: Array(newItems), present: Array(updatedItems), removed: Array(removedItems)))
+        
+        return result
     }
 }
+#endif

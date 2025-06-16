@@ -10,6 +10,7 @@
 #if !os(macOS)
 import UIKit
 #endif
+import Combine
 
 /// Error that can be thrown by a SmartDocument Object
 ///
@@ -22,19 +23,19 @@ public enum SmartDocumentError: Error {
     case unableToEncodeData
     case unableToSave
     case unableToClose
+    case unableToOpen
 }
 
-
-/// Delegate to receive events related to the document's state changing.
-public protocol SmartDocumentDelegate: class {
-    func smartDocumentEnableEditing(_ doc: SmartDocument)
-    func smartDocumentDisableEditing(_ doc: SmartDocument)
-    func smartDocumentUpdatedContent(_ doc: SmartDocument)
-    func smartDocumentTransferBegan(_ doc: SmartDocument)
-    func smartDocumentTransferEnded(_ doc: SmartDocument)
-    func smartDocumentSaveFailed(_ doc: SmartDocument)
-    func smartDocumentHasConflicts(_ doc: SmartDocument)
-    func smartDocumentDeletedOnOtherDevice(_ doc: SmartDocument)
+public enum SmartDocumentEvent {
+    case editingEnabled
+    case editingDisabled
+    case documentClosed
+    case contentUpdated
+    case transferBegan
+    case transferEnded
+    case saveFailed
+    case conflictsDetected
+    case deletedOnOtherDevice
 }
 
 
@@ -42,9 +43,12 @@ public protocol SmartDocumentDelegate: class {
 open class SmartDocument: UIDocument {
     
     /// Delegate to receive document state change callbacks
-    public weak var delegate: SmartDocumentDelegate?
+    private let _documentEventSubject = PassthroughSubject<SmartDocumentEvent, Never>()
+    public var documentEventPublisher: AnyPublisher<SmartDocumentEvent, Never> {
+        _documentEventSubject.eraseToAnyPublisher()
+    }
 
-    private var docStateObserver: AnyObject?
+    private var cancellables = Set<AnyCancellable>()
     private var transfering: Bool = false
     
     /// Transfer progress of Document
@@ -52,24 +56,35 @@ open class SmartDocument: UIDocument {
     
     /// To prevent spamming of the document state if it has not changed, we maintain the previous state to compare it to.
     private var previousDocumentState: UIDocument.State = []
+    private var previouslyKnownDocumentModificationDate: Date = Date(timeIntervalSince1970: 0)
     
-    public override init(fileURL url: URL) {
-        docStateObserver = nil
+    public override required init(fileURL url: URL) {
         super.init(fileURL: url)
         
-        docStateObserver = NotificationCenter.default.addObserver(forName: UIDocument.stateChangedNotification, object: self, queue: OperationQueue.main) { [weak self] _ in
+        NotificationCenter.default.publisher(for: UIDocument.stateChangedNotification)
+            .receive(on: OperationQueue.main)
+            .sink { [weak self] _ in
                 guard let self = self else {
                     return
                 }
                 
                 self.processDocumentState(self.documentState)
-        }
+                
+            }
+            .store(in: &cancellables)
     }
     
-    deinit {
-        if let docObserver = docStateObserver {
-            NotificationCenter.default.removeObserver(docObserver)
-        }
+    public func updatePreviouslyKnownDocumentModificationDate() {
+        previouslyKnownDocumentModificationDate = (try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? Date(timeIntervalSince1970: 0)
+    }
+    
+    /// Subclasses should call this method after performing a successful load operation to update the previously known document modification date for the data.
+    /// This method does nothing else
+    /// - Parameters:
+    ///   - contents: document contents. Unused by this implementaiton
+    ///   - typeName: type of document contents. Unused by this implementation
+    open override func load(fromContents contents: Any, ofType typeName: String?) throws {
+        updatePreviouslyKnownDocumentModificationDate()
     }
     
     // MARK: - Lifecycle
@@ -85,47 +100,63 @@ open class SmartDocument: UIDocument {
         print("Change: \(change)")
 
         if change == .done {
-            delegate?.smartDocumentUpdatedContent(self)
+            _documentEventSubject.send(.contentUpdated)
+        }
+    }
+    
+    /// Convenience method to Open a document.
+    public func safeOpen() async throws {
+        guard documentState.contains(.closed) else {
+            return
+        }
+        
+        let opened = await self.open()
+        
+        if !opened {
+            throw SmartDocumentError.unableToOpen
         }
     }
     
     /// Convenience method to close a document.
-    public func safeClose(completion: ((Error?) -> Void)? = nil) {
-        if !self.documentState.contains(.closed) {
-            self.close { closeSuccess in
-                if closeSuccess {
-                    completion?(nil)
-                }
-                else {
-                    completion?(SmartDocumentError.unableToClose)
-                }
-            }
-        } else {
-            completion?(nil)
+    public func safeClose() async throws {
+        guard !documentState.contains(.closed) else {
+            return
+        }
+        
+        let closed = await self.close()
+        
+        if !closed {
+            throw SmartDocumentError.unableToClose
+        }
+    }
+    
+    open nonisolated func save() async throws {
+        let success = await super.save(to: fileURL, for: .forOverwriting)
+        
+        if !success {
+            throw SmartDocumentError.unableToSave
         }
     }
     
     /// Convenience method to force an autosave and close a document.
     ///
     /// This method will autosave the document and close it if it's open afterward
-    /// - Parameter completionHandler: Completion closure to be invoked upon the autosave and close completion
-    public func autoSaveAndClose(completion: ((Error?) -> Void)? = nil) {
-        autosave { autosaveSuccess in
-            if autosaveSuccess {
-                self.safeClose(completion: completion)
-            } else {
-                completion?(SmartDocumentError.unableToSave)
-            }
+    public func autoSaveAndClose() async throws {
+        guard await autosave() else {
+            throw SmartDocumentError.unableToSave
         }
+        
+        try await safeClose()
     }
     
-    /// Upon being informed that our file will be deleted by a file coordinator, we need to force an autosave so the autosave engine doesnt re-write the file after its been removed.
-    public override func accommodatePresentedItemDeletion(completionHandler: @escaping (Error?) -> Void) {
-        self.autoSaveAndClose(completion: { [weak self] error in
-            completionHandler(error)
-            
-            self.flatMap{ $0.delegate?.smartDocumentDeletedOnOtherDevice($0)}
-        })
+    open override func accommodatePresentedItemDeletion() async throws {
+        do {
+            try await autoSaveAndClose()
+            _documentEventSubject.send(.deletedOnOtherDevice)
+        } catch {
+            _documentEventSubject.send(.deletedOnOtherDevice)
+            throw error
+        }
     }
 }
 
@@ -134,30 +165,38 @@ open class SmartDocument: UIDocument {
 extension SmartDocument {
     
     func processDocumentState(_ documentState: UIDocument.State) {
-        
         if documentState == .normal {
-            print("=> Document entered normal state")
-            delegate?.smartDocumentEnableEditing(self)
-        }
-        
-        if documentState.contains(.closed) && !previousDocumentState.contains(.closed) {
-            print("=> Document has closed")
-            delegate?.smartDocumentDisableEditing(self)
-        }
-        
-        if documentState.contains(.editingDisabled) && !previousDocumentState.contains(.editingDisabled) {
-            print("=> Document's editing is disabled")
-            delegate?.smartDocumentDisableEditing(self)
-        }
-        
-        if documentState.contains(.inConflict) && !previousDocumentState.contains(.inConflict) {
-            print("=> Document conflicts were detected")
-            delegate?.smartDocumentHasConflicts(self)
-        }
-        
-        if documentState.contains(.savingError) && !previousDocumentState.contains(.savingError) {
-            print("=> Document has a saving error")
-            delegate?.smartDocumentSaveFailed(self)
+            print("=> Document entered normal state \(ObjectIdentifier(self))")
+            _documentEventSubject.send(.editingEnabled)
+            
+            if let newDocumentModificationDate = fileModificationDate,
+               previousDocumentState.contains(.editingDisabled),
+               previouslyKnownDocumentModificationDate < newDocumentModificationDate  {
+                Task {
+                    previouslyKnownDocumentModificationDate = newDocumentModificationDate
+                    await revert(toContentsOf: fileURL)
+                }
+            }
+        } else {
+            if documentState.contains(.closed) && !previousDocumentState.contains(.closed) {
+                print("=> Document has closed \(ObjectIdentifier(self))")
+                _documentEventSubject.send(.documentClosed)
+            }
+            
+            if documentState.contains(.editingDisabled) && !previousDocumentState.contains(.editingDisabled) {
+                print("=> Document's editing is disabled \(ObjectIdentifier(self))")
+                _documentEventSubject.send(.editingEnabled)
+            }
+            
+            if documentState.contains(.inConflict) && !previousDocumentState.contains(.inConflict) {
+                print("=> Document conflicts were detected \(ObjectIdentifier(self))")
+                _documentEventSubject.send(.conflictsDetected)
+            }
+            
+            if documentState.contains(.savingError) && !previousDocumentState.contains(.savingError) {
+                print("=> Document has a saving error \(ObjectIdentifier(self))")
+                _documentEventSubject.send(.saveFailed)
+            }
         }
         
         handleDocStateForTransfers(documentState)
@@ -169,17 +208,23 @@ extension SmartDocument {
         if transfering {
             // If we're in the middle of a transfer, check to see if the transfer has ended.
             if !documentState.contains(.progressAvailable) {
-                print("=> A transfer Ended")
+                print("=> A transfer Ended \(ObjectIdentifier(self))")
                 transfering = false
-                delegate?.smartDocumentTransferEnded(self)
+                _documentEventSubject.send(.transferEnded)
             }
         } else {
             // If we're not in the middle of a transfer, check to see if a transfer has started.
             if documentState.contains(.progressAvailable) {
-                print("=> A transfer is in progress")
+                print("=> A transfer is in progress \(ObjectIdentifier(self))")
                 transfering = true
-                delegate?.smartDocumentTransferBegan(self)
+                _documentEventSubject.send(.transferBegan)
             }
         }
+    }
+    
+    open override func handleError(_ error: Error, userInteractionPermitted: Bool) {
+        super.handleError(error, userInteractionPermitted: userInteractionPermitted)
+        
+        print(error)
     }
 }

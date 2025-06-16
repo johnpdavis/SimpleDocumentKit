@@ -8,8 +8,11 @@
 import Combine
 import Foundation
 
+enum iCloudDocumentQueryCoordinatorError: Error {
+    case queryNotConfigured
+}
+
 public class iCloudDocumentQueryCoordinator: DocumentQueryCoordinator {
-    
     
     // MARK: Properties
     var currentQuery: NSMetadataQuery?
@@ -32,6 +35,7 @@ public class iCloudDocumentQueryCoordinator: DocumentQueryCoordinator {
     func makeDocumentQuery(searchScope: Any, documentExtension: String) -> NSMetadataQuery {
         let query = NSMetadataQuery()
         query.searchScopes = [searchScope]
+        query.notificationBatchingInterval = 1
         query.predicate = NSPredicate(format: "%K LIKE %@", NSMetadataItemFSNameKey, "*\(documentExtension)")
         // NSPredicate(format: "%K.URLByDeletingLastPathComponent.path == %@", argumentArray: [NSMetadataItemURLKey, iCloudDocsURL.path])
         
@@ -62,14 +66,28 @@ public class iCloudDocumentQueryCoordinator: DocumentQueryCoordinator {
     @objc
     private func onMetaDataQuery(_ notification: Notification) {
         DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.2, execute: { [weak self] in
-            self?.processFiles()
+            self?.processFilesAndSend()
         })
     }
 
-    public func processFiles() {
-        guard let currentQuery = currentQuery else { return }
-        
+    public func processFilesAndSend() {
+        do {
+            let result = try processFiles()
+            documentsUpdatedSubject.send(result)
+        } catch {
+            assertionFailure("Caught error attempting to process files: \(error)")
+        }
+    }
+
+    public func processFiles() throws -> DocumentsUpdatedResult {
+        guard let currentQuery = currentQuery else {
+            throw iCloudDocumentQueryCoordinatorError.queryNotConfigured
+        }
+
         currentQuery.disableUpdates()
+        defer {
+            currentQuery.enableUpdates()
+        }
         
         let newlyDiscoveredURLs: [URL] = currentQuery.results.compactMap { result in
             guard let result = result as? NSMetadataItem,
@@ -93,14 +111,12 @@ public class iCloudDocumentQueryCoordinator: DocumentQueryCoordinator {
         
         let newItems = newURLSet.filter { !currentURLSet.contains($0) }
         let removedItems = currentURLSet.filter { !newURLSet.contains($0) }
-        let updatedItems = currentURLSet.filter { newURLSet.contains($0) }
+        let presentItems = currentURLSet.filter { newURLSet.contains($0) }
         
         urls = newlyDiscoveredURLs
         urlsReady = true
         
-        let result: DocumentsUpdatedResult = .success((added: Array(newItems), updated: Array(updatedItems), removed: Array(removedItems)))
-        documentsUpdatedSubject.send(result)
-        
-        currentQuery.enableUpdates()
+        let result: DocumentsUpdatedResult = .success((added: Array(newItems), present: Array(presentItems), removed: Array(removedItems)))
+        return result
     }
 }
