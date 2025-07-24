@@ -106,7 +106,7 @@ open class SmartDocument: UIDocument {
     
     /// Convenience method to Open a document.
     public func safeOpen() async throws {
-        guard documentState.contains(.closed) else {
+        guard documentState.contains(.closed) && !documentState.contains(.normal) else {
             return
         }
         
