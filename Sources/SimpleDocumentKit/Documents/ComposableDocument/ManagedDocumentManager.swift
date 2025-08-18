@@ -249,9 +249,11 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
         let document = DOCUMENT(fileURL: url)
         document.initMetaDataForDocumentCreation(metaData: metaData)
         if await document.save(to: url, for: .forCreating) {
+            await document.close()
             return document
         } else {
             print("FAILED TO SAVE FILE")
+            await document.close()
             throw ManagedDocumentManagerError.unableToSaveNewDocument
         }
     }
