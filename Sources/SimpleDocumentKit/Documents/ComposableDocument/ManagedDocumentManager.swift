@@ -86,6 +86,9 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
     @Published public var localDocuments: [DOCUMENT] = []
     @Published public var cloudDocuments: [DOCUMENT] = []
     
+    @Published public var initialLocalScanComplete: Bool = false
+    @Published public var initialCloudScanComplete: Bool = false
+    
     private var isListeningForUpdates: Bool
     
     public init(localDocumentRoot: URL,
@@ -127,6 +130,7 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
             .sink { [weak self] result in
                 print("Received Cloud result: \(result)")
                 self?.processCloudResult(result)
+                self?.initialCloudScanComplete = true
             }
         
         cloudDocumentManager.startQueryingDocuments()
@@ -139,6 +143,7 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
             .sink { [weak self] result in
                 print("Received Local result: \(result)")
                 self?.processLocalResult(result)
+                self?.initialLocalScanComplete = true
             }
         
         localDocumentManager.startQueryingDocuments()
