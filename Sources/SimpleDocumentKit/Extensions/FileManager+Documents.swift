@@ -24,9 +24,9 @@ extension FileManager {
     /// - Parameters:
     ///   - document: Document to optionally close and attempt to delete
     public func removeDocument(_ document: UIDocument) async throws {
-        print("removeDocument - State: \(await document.documentStateString)")
+        print("removeDocument - State: \(document.documentStateString)")
         
-        let documentClosed = await document.documentState.contains(.closed)
+        let documentClosed = document.documentState.contains(.closed)
         if !documentClosed  {
             // If document is not closed. Close it first.
             let success = await document.close()

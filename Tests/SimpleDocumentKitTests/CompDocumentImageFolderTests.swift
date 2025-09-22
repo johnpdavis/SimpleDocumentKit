@@ -41,7 +41,7 @@ class CompDocumentImageFolderTests: XCTestCase {
         let images = [blue, green, purple, yellow, red]
         
         // Act
-        try await composableDoc.save(to: testDocURL, for: .forCreating)
+        await composableDoc.save(to: testDocURL, for: .forCreating)
         await composableDoc.open()
         
         metaDataItem.setContent(metaData)

@@ -16,26 +16,13 @@ enum ManagedDocumentManagerError: Error {
     case unableToReadMetaData
 }
 
-public typealias ManageableDocument = SmartDocument & ManageableMetaDataContaining & Sendable
+public typealias ManageableDocument = SmartDocument & ManageableMetaDataContaining
 
 class ManagedDocumentsLoader<DOCUMENT: ManageableDocument> {
     func loadDocuments(from urls: [URL]) async -> [DOCUMENT] {
-        return await withTaskGroup(of: DOCUMENT?.self, returning: [DOCUMENT].self) { taskGroup in
-            var results: [DOCUMENT] = []
-            
-            for url in urls {
-                _ = taskGroup.addTaskUnlessCancelled {
-                    let document = DOCUMENT(fileURL: url)
-                    
-                    return document
-                }
-            }
-            
-            for await loadedDocument in taskGroup {
-                loadedDocument.flatMap { results.append($0) }
-            }
-            
-            return results
+        
+        return urls.map { url in
+            DOCUMENT(fileURL: url)
         }
     }
     
@@ -68,7 +55,6 @@ class ManagedDocumentsLoader<DOCUMENT: ManageableDocument> {
     }
 }
 
-@MainActor
 public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObject {
     
     private let documentDirectoryName: String
@@ -91,6 +77,7 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
     
     private var isListeningForUpdates: Bool
     
+    @MainActor
     public init(localDocumentRoot: URL,
                 documentDirectoryName: String,
                 managedDocumentExtension: String,
@@ -216,7 +203,7 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
     ///
     /// - Parameter name: Name of document with extension
     /// - Returns: returns URL of document, or nil, if it could not be found or created
-    public func urlForDocument(name: String) -> URL? {
+    public nonisolated func urlForDocument(name: String) -> URL? {
         if ICloudDefaults.standard.iCloudOn {
             return cloudDocumentManager.iCloudURLForDocument(filename: name)
         } else {
@@ -253,6 +240,7 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
         guard let url = urlForDocument(name: newDocumentName) else { throw ManagedDocumentManagerError.unableToRetrieveURL }
         let document = DOCUMENT(fileURL: url)
         document.initMetaDataForDocumentCreation(metaData: metaData)
+        
         if await document.save(to: url, for: .forCreating) {
             await document.close()
             return document
@@ -268,7 +256,7 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
     /// - Parameters:
     ///   - document: Document to move to newly named URL
     ///   - name: New name of document including extension
-    public func renameDocument(document: DOCUMENT, name: String) async throws {
+    public nonisolated func renameDocument(document: DOCUMENT, name: String) async throws {
         try await document.autoSaveAndClose()
         
         guard name != document.fileURL.lastPathComponent else {
@@ -290,7 +278,7 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
     
     public nonisolated func removeDocument(_ document: DOCUMENT) async throws {
         try await document.autoSaveAndClose()
-        let fileURL = await document.fileURL
+        let fileURL = document.fileURL
         
         let _: Void = try await withCheckedThrowingContinuation { continuation in
             let coordinator = NSFileCoordinator(filePresenter: document)
@@ -317,7 +305,7 @@ public class ManagedDocumentManager<DOCUMENT: ManageableDocument>: ObservableObj
     ///
     /// - Parameter name: Full name of document including extension.
     /// - Returns: True of document exists. Otherwise false.
-    public func documentExistsWithName(_ name: String) -> Bool {
+    public nonisolated func documentExistsWithName(_ name: String) -> Bool {
         guard let fullFileURL = urlForDocument(name: name) else { fatalError("Cannot construct full Document file URL") }
         
         return FileManager.default.fileExists(atPath:fullFileURL.path)

@@ -8,10 +8,9 @@
 
 import Foundation
 
-@MainActor
-public struct ICloudDefaults {
+public class ICloudDefaults: @unchecked Sendable {
     /// Standard iCloudDefaults that returns an instance wrapping `UserDefaults`
-    public static var `standard` = ICloudDefaults()
+    public static let `standard` = ICloudDefaults()
     
     /// Boolean providing defaults object. The default initializer will set this to `UserDefaults.standard`
     private var defaults: BooleanUserDefaultsProtocol

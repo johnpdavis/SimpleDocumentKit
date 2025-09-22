@@ -23,7 +23,7 @@ public class FolderMapItem: FileMapItemBase {
         }
     }
     
-    public override required init(filename: String) {
+    public required init(filename: String) {
         super.init(filename: filename)
     }
     

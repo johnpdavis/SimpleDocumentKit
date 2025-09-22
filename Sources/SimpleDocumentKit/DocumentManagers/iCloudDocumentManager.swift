@@ -9,7 +9,7 @@
 import Combine
 import Foundation
 
-@MainActor
+
 public class CloudDocumentManager: BaseDocumentManager {
     
     // MARK: Properties
@@ -39,9 +39,7 @@ public class CloudDocumentManager: BaseDocumentManager {
     
     public func initializeiCloudAccess() async -> (Bool, URL?) {
         if let url = FileManager.default.url(forUbiquityContainerIdentifier: nil) {
-            await MainActor.run {
-                self.iCloudRootURL = url
-            }
+            self.iCloudRootURL = url
             
             return (true, url)
         } else {

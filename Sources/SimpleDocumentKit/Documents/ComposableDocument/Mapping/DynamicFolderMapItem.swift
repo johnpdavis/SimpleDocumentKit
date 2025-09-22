@@ -37,7 +37,7 @@ public class DynamicFolderMapItem: FolderMapItem {
         super.init(filename: filename)
     }
     
-    public override required init(filename: String) {
+    public required init(filename: String) {
         fatalError("Not supported for dynamic folders.")
     }
     
