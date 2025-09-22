@@ -16,7 +16,7 @@ enum ManagedDocumentManagerError: Error {
     case unableToReadMetaData
 }
 
-public typealias ManageableDocument = SmartDocument & ManageableMetaDataContaining
+public typealias ManageableDocument = SmartDocument & ManageableMetaDataContaining & Sendable
 
 class ManagedDocumentsLoader<DOCUMENT: ManageableDocument> {
     func loadDocuments(from urls: [URL]) async -> [DOCUMENT] {
@@ -25,7 +25,7 @@ class ManagedDocumentsLoader<DOCUMENT: ManageableDocument> {
             
             for url in urls {
                 _ = taskGroup.addTaskUnlessCancelled {
-                    let document = await DOCUMENT(fileURL: url)
+                    let document = DOCUMENT(fileURL: url)
                     
                     return document
                 }

@@ -11,7 +11,6 @@ import Foundation
 import UIKit
 #endif
 
-@MainActor
 extension NSFileVersion {
     /// Choose a version of a UIDocument and discard the others.
     ///

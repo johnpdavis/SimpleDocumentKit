@@ -172,10 +172,8 @@ extension SmartDocument {
             if let newDocumentModificationDate = fileModificationDate,
                previousDocumentState.contains(.editingDisabled),
                previouslyKnownDocumentModificationDate < newDocumentModificationDate  {
-                Task {
                     previouslyKnownDocumentModificationDate = newDocumentModificationDate
-                    await revert(toContentsOf: fileURL)
-                }
+                    revert(toContentsOf: fileURL)
             }
         } else {
             if documentState.contains(.closed) && !previousDocumentState.contains(.closed) {

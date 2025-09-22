@@ -3,7 +3,6 @@ import XCTest
 
 final class ComposableDocumentTests: XCTestCase {
     
-    @MainActor
     func testComposableDocumentLoad() async throws {
         let testDocURL = Utilities.createTestDocumentInFileSystem()
         let composableDoc = ComposableDocument(fileURL: testDocURL)
@@ -19,7 +18,6 @@ final class ComposableDocumentTests: XCTestCase {
         XCTAssertNil(composableDoc.mapRootItem.fileWrapper?.fileWrappers?["images"]?.fileWrappers?["birds"])
     }
     
-    @MainActor
     func testMapAssociation() async throws {
         // Arrange
         let testDocURL = Utilities.createTestDocumentInFileSystem()
@@ -47,7 +45,6 @@ final class ComposableDocumentTests: XCTestCase {
         XCTAssertNotNil(originalsFolder._fileWrapper)
     }
     
-    @MainActor
     func testTestDocumentDecode() async throws {
         let testDocURL = Utilities.createTestDocumentInFileSystem()
         let docSetup = Utilities.makeComposedTestDocument(at: testDocURL)
@@ -62,7 +59,6 @@ final class ComposableDocumentTests: XCTestCase {
         XCTAssertEqual(mockData.id, "testID")
     }
     
-    @MainActor
     func testEmptyDocumentInitialSave() async throws {
         let testDocURL = Utilities.makeTestDocumentTmpURL()
         print(testDocURL)
@@ -92,7 +88,6 @@ final class ComposableDocumentTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: originalsURL.path))
     }
     
-    @MainActor
     func testEmptyDocumentAutoSaveWithMetaData() async throws {
         let testDocURL = Utilities.makeTestDocumentTmpURL()
         print(testDocURL)
@@ -127,7 +122,6 @@ final class ComposableDocumentTests: XCTestCase {
         XCTAssertEqual(mockData, metaDataFromFileSystem)
     }
     
-    @MainActor
     func testDocumentAutoSaveWithMetaDataOverwrite() async throws {
         let testDocURL = Utilities.makeTestDocumentTmpURL()
         let docSetup = Utilities.makeComposedTestDocument(at: testDocURL)

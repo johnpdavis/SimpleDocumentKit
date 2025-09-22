@@ -18,7 +18,7 @@ enum ComposableDocumentError: Error {
 }
 
 // MARK: - ComposableDocument
-open class ComposableDocument: SmartDocument {
+nonisolated open class ComposableDocument: SmartDocument {
     // MARK: - Internal Types
 
     // MARK: - Internal Content Tracking
